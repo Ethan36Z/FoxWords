@@ -46,35 +46,46 @@ function StoryReviewPage() {
     return zh;
   };
 
+// -------------------- 生成故事 + 复制功能 --------------------
+
+  // const handleGenerateStory = async () => {
+  //   try {
+  //     setGenerating(true);
+  //     setStory("");
+  //     setStoryError(null);
+  //     setCopyStatus("idle");
+  //     setCopyMsg("");
+
+  //     const words = latestNotebook.map((w) => w.word);
+
+  //     const res = await fetch(`${API_BASE}/api/story`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ words }),
+  //     });
+
+  //     const data = await res.json().catch(() => ({}));
+
+  //     if (!res.ok) {
+  //       throw new Error(data?.error || "Failed to generate story");
+  //     }
+
+  //     setStory(data.story || "");
+  //   } catch (err) {
+  //     console.error("Error generating story:", err);
+  //     setStoryError(err.message || "Failed to generate story");
+  //   } finally {
+  //     setGenerating(false);
+  //   }
+  // };
+
+// 生成故事的接口暂时关闭了，所以先放个占位，等后续版本再完善这个功能.
+
   const handleGenerateStory = async () => {
-    try {
-      setGenerating(true);
-      setStory("");
-      setStoryError(null);
-      setCopyStatus("idle");
-      setCopyMsg("");
-
-      const words = latestNotebook.map((w) => w.word);
-
-      const res = await fetch(`${API_BASE}/api/story`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ words }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to generate story");
-      }
-
-      setStory(data.story || "");
-    } catch (err) {
-      console.error("Error generating story:", err);
-      setStoryError(err.message || "Failed to generate story");
-    } finally {
-      setGenerating(false);
-    }
+    setStory("");
+    setStoryError("Story generation is disabled in the deploy version for now.");
+    setCopyStatus("idle");
+    setCopyMsg("");
   };
 
   const handleCopyStory = async () => {
