@@ -15,8 +15,8 @@ server/.env
 dist-ssr
 *.local
 
-server/foxwords.db
-server/notebook.json
+
+
 server/settings.json
 server/ecdict.csv
 old_code/
