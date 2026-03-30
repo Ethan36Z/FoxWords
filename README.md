@@ -9,6 +9,13 @@ Words are saved to local JSON files, and a local LLM (Ollama) can generate short
 > This project is a learning project. The code is simple on purpose, so I can understand every part from front to back.
 
 ---
+## Live Demo
+
+Frontend: https://foxwords.onrender.com  
+Backend API: https://foxwords-api.onrender.com
+
+Note: The story generation feature may require a local Ollama setup and may not be available in the deployed version.
+
 
 ## Features
 
