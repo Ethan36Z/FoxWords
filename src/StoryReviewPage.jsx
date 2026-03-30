@@ -13,7 +13,7 @@ function StoryReviewPage() {
   // ✅ Copy states
   const [copyStatus, setCopyStatus] = useState("idle"); // idle | copied | error
   const [copyMsg, setCopyMsg] = useState("");
-
+ // -------------------- 加载生词本 --------------------
   useEffect(() => {
     async function loadNotebook() {
       try {
@@ -45,7 +45,7 @@ function StoryReviewPage() {
     const zh = (w?.translation || w?.definition || "").trim();
     return zh;
   };
-
+ // -------------------- 生成故事 & 复制故事 --------------------
   const handleGenerateStory = async () => {
     try {
       setGenerating(true);
@@ -76,7 +76,7 @@ function StoryReviewPage() {
       setGenerating(false);
     }
   };
-
+// ✅ 复制故事到剪贴板
   const handleCopyStory = async () => {
     const text = String(story || "").trim();
     if (!text) return;

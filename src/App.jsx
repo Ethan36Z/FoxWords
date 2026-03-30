@@ -58,7 +58,7 @@ function App() {
     }
   }, []);
 
-  // ✅ 搜索：仅在浮层打开时，debounce 查询字典（避免每个字符都请求）
+  // ✅ 搜索：仅在浮层打开时，debounce 查询字典（避免每个字符都请求）/与Overlay功能重复
   useEffect(() => {
     if (!searchOpen) return;
 
