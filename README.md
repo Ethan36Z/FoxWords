@@ -2,7 +2,7 @@
 
 # FoxWords 🦊
 
-FoxWords is a small vocabulary notebook web app I built as my first full-stack project.  
+FoxWords is a small vocabulary(CHinese-English) notebook web app I built as my first full-stack project.  
 It has a React frontend and a Node.js + Express backend.  
 Words are saved to local JSON files, and a local LLM (Ollama) can generate short stories using selected words in the notbook.
 
