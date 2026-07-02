@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 /* eslint-env node */
 
+require("dotenv").config();
 const path = require("path");
 const fsp = require("fs/promises");
 const express = require("express");

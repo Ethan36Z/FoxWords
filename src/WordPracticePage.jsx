@@ -135,7 +135,7 @@ function WordPracticePage() {
     if (!exampleFirst) {
       if (!showMeaning) {
         setShowMeaning(true);
-        setShowExample(false);
+        setShowExample(true);
       } else {
         handleAddToNotebook();
       }
