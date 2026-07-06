@@ -1014,3 +1014,169 @@ a{
 
 .nb-footer{ margin-top: 16px; }
 
+/* ===== Shared chips ===== */
+.pill{
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.pill--light{
+  background: #f7f7f7;
+  color: #333;
+}
+
+/* ===== Patterns page ===== */
+.patterns-head{
+  align-items: flex-start;
+}
+
+.patterns-filter-card{
+  padding: 18px 20px;
+}
+
+.patterns-filters{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.patterns-filter-actions{
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.patterns-field{
+  display: flex;
+  flex-direction: column;
+}
+
+.patterns-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.pattern-card{
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 420px;
+}
+
+.pattern-card__top{
+  align-items: center;
+}
+
+.pattern-card__pattern{
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.pattern-card__meaning{
+  color: #333;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.pattern-card__section{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pattern-card__text,
+.pattern-card__sample{
+  color: #444;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.pattern-card__sample{
+  border: 1px solid #eee;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 10px 12px;
+}
+
+.pattern-card__meta{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.pattern-pills{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pattern-practice{
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.pattern-practice-card .wp-word{
+  margin-bottom: 18px;
+}
+
+.pattern-prompt{
+  font-size: 34px;
+}
+
+.pattern-hint{
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.pattern-answer-field{
+  display: flex;
+  flex-direction: column;
+}
+
+.pattern-answer{
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.pattern-sample-answer{
+  font-weight: 750;
+}
+
+.pattern-summary-grid{
+  max-width: 360px;
+}
+
+@media (max-width: 760px){
+  .patterns-filters{
+    grid-template-columns: 1fr;
+  }
+
+  .patterns-filter-actions{
+    justify-content: stretch;
+  }
+
+  .patterns-filter-actions .btn{
+    width: 100%;
+  }
+
+  .pattern-card{
+    min-height: 0;
+  }
+
+  .pattern-prompt{
+    font-size: 28px;
+  }
+}
+

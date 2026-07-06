@@ -8,6 +8,8 @@ import WordPracticePage from "./WordPracticePage";
 import SettingsPage from "./SettingsPage";
 import LoginPage from "./LoginPage";
 import StoryReviewPage from "./StoryReviewPage";
+import PatternsPage from "./PatternsPage";
+import PatternPracticePage from "./PatternPracticePage";
 
 import BooksPage from "./BooksPage";
 import NotebookPage from "./NotebookPage";
@@ -148,6 +150,9 @@ function App() {
             <button className="btn btn-ghost btn-sm" onClick={() => navigate("/study")}>
               Study
             </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/patterns")}>
+              Patterns
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => navigate("/notebook")}>
               Notebook
             </button>
@@ -281,6 +286,22 @@ function App() {
           element={
             <RequireAuth>
               <WordPracticePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/patterns"
+          element={
+            <RequireAuth>
+              <PatternsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/patterns/practice"
+          element={
+            <RequireAuth>
+              <PatternPracticePage />
             </RequireAuth>
           }
         />

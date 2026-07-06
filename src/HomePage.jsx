@@ -17,6 +17,12 @@ function HomePage({ onNavigate }) {
             <p className="text-muted">查看你标记的生词，准备故事复习。</p >
             <span className="home-card-cta">打开 →</span>
           </button>
+
+          <button className="home-card" onClick={() => onNavigate("/patterns")}>
+            <h3>Patterns</h3>
+            <p className="text-muted">Browse sentence patterns by scenario, level, and frequency.</p>
+            <span className="home-card-cta">Open -&gt;</span>
+          </button>
         </div>
       </div>
     </div>

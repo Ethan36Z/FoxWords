@@ -1,0 +1,142 @@
+[
+  {
+    "id": "p001",
+    "pattern": "I'm looking for ...",
+    "meaningZh": "我在找/想要……",
+    "function": "State a need or goal politely.",
+    "scenarios": ["shopping", "travel", "customer service"],
+    "domains": ["daily life", "service"],
+    "level": "A1",
+    "frequency": 5,
+    "sampleAnswers": [
+      "I'm looking for a quiet place to study.",
+      "I'm looking for the train station."
+    ]
+  },
+  {
+    "id": "p002",
+    "pattern": "Could you help me ...?",
+    "meaningZh": "你能帮我……吗？",
+    "function": "Ask for help in a polite way.",
+    "scenarios": ["customer service", "work", "travel"],
+    "domains": ["daily life", "work"],
+    "level": "A1",
+    "frequency": 5,
+    "sampleAnswers": [
+      "Could you help me find this address?",
+      "Could you help me reset my password?"
+    ]
+  },
+  {
+    "id": "p003",
+    "pattern": "I usually ... when ...",
+    "meaningZh": "当……的时候，我通常……",
+    "function": "Describe habits connected to a situation.",
+    "scenarios": ["small talk", "study", "work"],
+    "domains": ["daily life", "learning"],
+    "level": "A2",
+    "frequency": 4,
+    "sampleAnswers": [
+      "I usually take notes when I read a new article.",
+      "I usually listen to music when I work."
+    ]
+  },
+  {
+    "id": "p004",
+    "pattern": "The main reason is that ...",
+    "meaningZh": "主要原因是……",
+    "function": "Give a clear reason or explanation.",
+    "scenarios": ["discussion", "school", "work"],
+    "domains": ["academic", "work"],
+    "level": "B1",
+    "frequency": 4,
+    "sampleAnswers": [
+      "The main reason is that the schedule is too tight.",
+      "The main reason is that this method saves time."
+    ]
+  },
+  {
+    "id": "p005",
+    "pattern": "It depends on ...",
+    "meaningZh": "这取决于……",
+    "function": "Show that an answer changes with the condition.",
+    "scenarios": ["discussion", "decision making", "small talk"],
+    "domains": ["daily life", "work"],
+    "level": "A2",
+    "frequency": 5,
+    "sampleAnswers": [
+      "It depends on how much time we have.",
+      "It depends on the price and the quality."
+    ]
+  },
+  {
+    "id": "p006",
+    "pattern": "I'd rather ... than ...",
+    "meaningZh": "我宁愿……也不愿……",
+    "function": "Compare preferences.",
+    "scenarios": ["small talk", "decision making", "travel"],
+    "domains": ["daily life"],
+    "level": "B1",
+    "frequency": 3,
+    "sampleAnswers": [
+      "I'd rather walk than wait for another bus.",
+      "I'd rather study in the morning than late at night."
+    ]
+  },
+  {
+    "id": "p007",
+    "pattern": "What I mean is ...",
+    "meaningZh": "我的意思是……",
+    "function": "Clarify your idea.",
+    "scenarios": ["discussion", "work", "school"],
+    "domains": ["communication", "work"],
+    "level": "B1",
+    "frequency": 4,
+    "sampleAnswers": [
+      "What I mean is we should test it first.",
+      "What I mean is the idea is good, but the timing is difficult."
+    ]
+  },
+  {
+    "id": "p008",
+    "pattern": "From my point of view, ...",
+    "meaningZh": "从我的角度来看，……",
+    "function": "Introduce an opinion.",
+    "scenarios": ["discussion", "presentation", "school"],
+    "domains": ["academic", "work"],
+    "level": "B1",
+    "frequency": 3,
+    "sampleAnswers": [
+      "From my point of view, reading every day is more useful than memorizing lists.",
+      "From my point of view, the design is simple and clear."
+    ]
+  },
+  {
+    "id": "p009",
+    "pattern": "Not only ..., but also ...",
+    "meaningZh": "不仅……而且……",
+    "function": "Add a stronger second point.",
+    "scenarios": ["writing", "presentation", "discussion"],
+    "domains": ["academic", "work"],
+    "level": "B2",
+    "frequency": 3,
+    "sampleAnswers": [
+      "Not only is the app useful, but it is also easy to use.",
+      "Not only did she finish the task, but she also improved the process."
+    ]
+  },
+  {
+    "id": "p010",
+    "pattern": "If I had to choose, I would ...",
+    "meaningZh": "如果一定要选，我会……",
+    "function": "Make a careful choice.",
+    "scenarios": ["decision making", "interview", "discussion"],
+    "domains": ["work", "daily life"],
+    "level": "B1",
+    "frequency": 3,
+    "sampleAnswers": [
+      "If I had to choose, I would focus on speaking first.",
+      "If I had to choose, I would take the earlier train."
+    ]
+  }
+]
