@@ -1,16 +1,14 @@
 // src/SettingsPage.jsx
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { API_BASE } from "./apiBase";
 
 function SettingsPage() {
   const [exampleFirst, setExampleFirst] = useState(true);
-  const [dailyGoal, setDailyGoal] = useState(20);
+  const [dailyGoal, setDailyGoal] = useState(30);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 组件加载时，从后端读取设置
-  
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -28,7 +26,7 @@ function SettingsPage() {
           setExampleFirst(data.exampleFirst);
         }
         if (typeof data.dailyGoal === "number") {
-          setDailyGoal(data.dailyGoal);
+          setDailyGoal(Math.max(1, Math.min(50, data.dailyGoal)));
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -42,13 +40,15 @@ function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
+    const clampedGoal = Math.max(1, Math.min(50, Number(dailyGoal) || 30));
     const toSave = {
       exampleFirst,
-      dailyGoal: Number(dailyGoal) || 10,
+      dailyGoal: clampedGoal,
     };
 
     try {
       setError(null);
+      setDailyGoal(clampedGoal);
 
       const res = await fetch(API_BASE + "/api/settings", {
         method: "PUT",
@@ -83,25 +83,26 @@ function SettingsPage() {
   return (
     <div className="page">
       <div className="container stack">
-        <div className="card card--medium card--padded stack">
+        <div className="card card--medium card--padded stack settings-card">
           <div>
             <h1 className="title">Settings ⚙️</h1>
-            <p className="text-muted">调整一下你的 FoxWords 学习偏好。</p >
           </div>
 
           <div className="field">
-            <label className="label">每日目标单词数</label>
+            <label className="label" htmlFor="dailyGoal">
+              每日目标单词数
+            </label>
 
             <div className="row settings-row">
               <input
+                id="dailyGoal"
                 className="input settings-number"
                 type="number"
                 value={dailyGoal}
                 onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (Number.isNaN(v)) return;
-                  const clamped = Math.max(1, Math.min(50, v));
-                  setDailyGoal(clamped);
+                  const value = Number(e.target.value);
+                  if (Number.isNaN(value)) return;
+                  setDailyGoal(Math.max(1, Math.min(50, value)));
                 }}
                 min={1}
                 max={50}
@@ -109,43 +110,32 @@ function SettingsPage() {
 
               <span className="text-small">范围 1–50</span>
             </div>
-
-            {dailyGoal === 50 && (
-              <p className="hint">最多 50 个词/天（系统硬上限）</p >
-            )}
           </div>
 
-          <div className="field">
-            <label className="settings-check">
-              <input
-                type="checkbox"
-                checked={exampleFirst}
-                onChange={(e) => setExampleFirst(e.target.checked)}
-              />
-              <span>
-                先看例句，再看释义
-                <span
-                  className="text-small"
-                  style={{ display: "block", marginTop: 4 }}
-                >
-                  勾选：三段式；取消：直接看释义
-                </span>
-              </span>
-            </label>
+          <div className="field settings-switch-row">
+            <div>
+              <div className="label">先看例句，再看释义</div>
+              <div className="text-small">勾选：三段式；取消：直接看释义</div>
+            </div>
+
+            <button
+              className={`settings-switch ${exampleFirst ? "is-on" : ""}`}
+              type="button"
+              role="switch"
+              aria-checked={exampleFirst}
+              aria-label="先看例句，再看释义"
+              onClick={() => setExampleFirst((value) => !value)}
+            >
+              <span />
+            </button>
           </div>
 
           <div className="row settings-actions">
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              type="button"
-            >
+            <button className="btn btn-primary" onClick={handleSave} type="button">
               保存设置
             </button>
 
-            {saved ? (
-              <span className="pill settings-saved">已保存 ✅</span>
-            ) : null}
+            {saved ? <span className="settings-saved">✓ 设置已保存</span> : null}
           </div>
         </div>
       </div>
