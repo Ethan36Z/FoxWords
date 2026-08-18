@@ -10,14 +10,22 @@ lerna-debug.log*
 node_modules
 dist
 .env
+.env.deploy
 server/node_modules
 server/.env
 dist-ssr
 *.local
 
 server/foxwords.db
+server/foxwords.db-shm
+server/foxwords.db-wal
 server/notebook.json
 server/settings.json
+data/
+*.db
+*.db-shm
+*.db-wal
+*.gguf
 server/ecdict.csv
 old_code/
 *old.*

@@ -3,8 +3,9 @@
 const Database = require("better-sqlite3");
 const path = require("path");
 
-const db = new Database(path.join(__dirname, "foxwords.db"));
-console.log("DB FILE =>", path.join(__dirname, "foxwords.db"));
+const dbFile = process.env.DB_FILE || path.join(__dirname, "foxwords.db");
+const db = new Database(dbFile);
+console.log("DB FILE =>", dbFile);
 
 // build tables (run once, safe to run many times)
 db.exec(`

@@ -1,0 +1,83 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8084:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - foxwords_edge
+      - foxwords_private
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "4000"
+      DB_FILE: /data/foxwords.db
+      SETTINGS_FILE: /data/settings.json
+      LLAMA_SERVER_URL: http://llama-server:8080
+      LLAMA_MODEL: ${LLAMA_MODEL:-foxwords}
+      LLAMA_TIMEOUT_MS: ${LLAMA_TIMEOUT_MS:-120000}
+      STORY_LIMIT: ${STORY_LIMIT:-10}
+    volumes:
+      - ./data:/data
+    depends_on:
+      llama-server:
+        condition: service_healthy
+    networks:
+      - foxwords_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  llama-server:
+    image: ${LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+    restart: unless-stopped
+    command:
+      - -m
+      - /models/${LLAMA_MODEL_FILE:?Set LLAMA_MODEL_FILE in .env.deploy}
+
+      - --alias
+      - ${LLAMA_MODEL:-foxwords}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - -ngl
+      - ${LLAMA_GPU_LAYERS:-99}
+      - -c
+      - ${LLAMA_CONTEXT_SIZE:-4096}
+      - -np
+      - ${LLAMA_PARALLEL:-1}
+    volumes:
+      - /home/ethan/srv/shared/models:/models:ro
+    gpus: all
+    networks:
+      - foxwords_private
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+networks:
+  foxwords_edge: {}
+  foxwords_private:
+    internal: true

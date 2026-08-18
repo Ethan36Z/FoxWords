@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.deploy.example
+node_modules
+server/node_modules
+dist
+server/foxwords.db*
+server/settings.json
+data
+*.gguf
+npm-debug.log*
+docs
+old_code

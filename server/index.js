@@ -14,14 +14,15 @@ const app = express();
 
 // ✅ env 配置
 const PORT = Number(process.env.PORT || 4000);
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:4b";
+const LLAMA_SERVER_URL = (process.env.LLAMA_SERVER_URL || "http://llama-server:8080").replace(/\/$/, "");
+const LLAMA_MODEL = process.env.LLAMA_MODEL || "foxwords";
+const LLAMA_TIMEOUT_MS = Math.max(1000, Number(process.env.LLAMA_TIMEOUT_MS || 120000));
 const STORY_LIMIT = Math.max(1, Math.min(Number(process.env.STORY_LIMIT || 10), 30));
 
 app.use(cors());
 app.use(express.json());
 
-const SETTINGS_FILE = path.join(__dirname, "settings.json");
+const SETTINGS_FILE = process.env.SETTINGS_FILE || path.join(__dirname, "settings.json");
 
 // -------------------- health --------------------
 app.get("/api/health", (req, res) => {
@@ -107,7 +108,7 @@ app.delete("/api/notebook/:id", (req, res) => {
   }
 });
 
-// -------------------- story (Latest N notebook -> Ollama) --------------------
+// -------------------- story (Latest N notebook -> llama-server) --------------------
 app.post("/api/story", async (req, res) => {
   try {
     // ✅ 不依赖前端 words，直接取 notebook 最新 N 个
@@ -142,17 +143,17 @@ Highlight these words in the story like: *apple*.
 After the English story, also give a brief Chinese summary (1-2 sentences).
 `;
 
-    const ollamaResponse = await axios.post(
-      `${OLLAMA_URL}/api/generate`,
+    const llamaResponse = await axios.post(
+      `${LLAMA_SERVER_URL}/v1/chat/completions`,
       {
-        model: OLLAMA_MODEL,
-        prompt,
+        model: LLAMA_MODEL,
+        messages: [{ role: "user", content: prompt }],
         stream: false,
       },
-      { timeout: 120000 }
+      { timeout: LLAMA_TIMEOUT_MS }
     );
 
-    const storyText = ollamaResponse.data?.response || "";
+    const storyText = llamaResponse.data?.choices?.[0]?.message?.content || "";
     if (!storyText.trim()) {
       return res.status(500).json({ error: "LLM returned empty story" });
     }
@@ -160,6 +161,15 @@ After the English story, also give a brief Chinese summary (1-2 sentences).
     res.json({ story: storyText });
   } catch (err) {
     console.error("Failed to create story with LLM:", err);
+    if (axios.isAxiosError(err)) {
+      const upstreamStatus = err.response?.status;
+      if (upstreamStatus === 400 || upstreamStatus === 404 || upstreamStatus === 503) {
+        return res.status(503).json({ error: "LLM is unavailable or still loading" });
+      }
+      if (err.code === "ECONNABORTED" || !err.response) {
+        return res.status(503).json({ error: "LLM service is unavailable" });
+      }
+    }
     res.status(500).json({ error: "failed to create story" });
   }
 });
@@ -309,9 +319,9 @@ app.get("/api/words/today", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`FoxWords backend running on http://localhost:${PORT}`);
+  console.log(`FoxWords backend running on port ${PORT}`);
   console.log("SETTINGS_FILE:", SETTINGS_FILE);
-  console.log("OLLAMA_URL:", OLLAMA_URL);
-  console.log("OLLAMA_MODEL:", OLLAMA_MODEL);
+  console.log("LLAMA_SERVER_URL:", LLAMA_SERVER_URL);
+  console.log("LLAMA_MODEL:", LLAMA_MODEL);
   console.log("STORY_LIMIT:", STORY_LIMIT);
 });

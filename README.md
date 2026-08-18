@@ -1,94 +1,37 @@
-
-
 # FoxWords 🦊
 
-FoxWords is a small vocabulary(CHinese-English) notebook web app I built as my first full-stack project.  
-It has a React frontend and a Node.js + Express backend.  
-Words are saved to local JSON files, and a local LLM (Ollama) can generate short stories using selected words in the notbook.
-
-> This project is a learning project. The code is simple on purpose, so I can understand every part from front to back.
-
----
-## Live Demo
-
-Frontend: https://foxwords.onrender.com  
-Backend API: https://foxwords-api.onrender.com
-
-Note: The story generation feature may require a local Ollama setup and may not be available in the deployed version.
-
+FoxWords is a small Chinese-English vocabulary learning web app. It combines a React/Vite frontend with an Express backend, SQLite persistence, and optional local story generation through llama.cpp's `llama-server`.
 
 ## Features
 
-- **Login page**
-  - Demo login with fixed email / password:
-    - Email: `test@example.com`
-    - Password: `123456`
-  - On success, the backend returns a fake token and the frontend stores it in `localStorage`.
+- Demo login and authenticated learning pages
+- Notebook for saving words, translations, definitions, and timestamps
+- SQLite-backed dictionary search and daily word practice
+- User settings for study preferences and daily goal
+- Static pattern practice content
+- Optional story generation from recent notebook words
 
-- **Notebook (new words list)**
-  - Fetch all saved words from the backend: `GET /api/notebook`
-  - Add a new word with translation / definition: `POST /api/notebook`
-  - Backend stores words in a local file: `notebook.json`
-  - Each word is saved with a `createdAt` timestamp.
+Story generation is the only feature that requires a running AI model. The backend sends an OpenAI-compatible request to `llama-server` and returns the generated English story and Chinese summary. Other pages can be used without making an AI generation request.
 
-- **Story generator (LLM)**
-  - Choose some words from the notebook and send them to the backend.
-  - Backend reads `notebook.json`, send all words(current version), builds a prompt, and calls a local LLM with **Ollama**.
-  - Currently using model: `qwen3:4b` 
-  - Returns an English story (with words highlighted) + a short Chinese summary.
+## Stack
 
-- **Settings page**
-  - User settings:
-    - `exampleFirst` (boolean)
-    - `dailyGoal` (number)
-  - Frontend: `GET /api/settings` to load, `PUT /api/settings` to save.
-  - Backend stores settings in `settings.json` (using async `fs/promises` API).
+- Frontend: React, Vite, React Router
+- Backend: Node.js, Express, Axios, better-sqlite3
+- Data: SQLite database plus a JSON settings file
+- Model service: llama.cpp `server-cuda` image with NVIDIA CUDA support
 
-- **Dictionary**
-  - Frontend can load a small demo dictionary from `dictionary.json` through `GET /api/dictionary`.
+## Development
 
-- **Health check**
-  - Simple endpoint: `GET /api/health`  
-  - Returns `{ status: "ok", time: "<ISO string>" }`, used to check if the backend is running.
+Install dependencies, import the bundled dictionary, and run the frontend and backend in separate terminals:
 
----
+```bash
+npm install
+npm --prefix server install
+npm run import:dict
+npm run server
+npm run dev
+```
 
-## Tech Stack
+The Vite development server runs at `http://localhost:5173` and the Express backend at `http://localhost:4000`. In development, the frontend uses the backend URL directly; production uses same-origin `/api` by default.
 
-**Frontend**
-
-- React
-- JavaScript
-- Fetch API for HTTP requests
-
-**Backend**
-
-- Node.js
-- Express
-- CORS middleware
-- `fs` and `fs/promises` for local JSON file storage
-- `axios` to call Ollama (local LLM)
-
-**LLM**
-
-- [Ollama](https://ollama.com/) running locally
-- Model: `qwen3:4b`
----
-
-## Project Structure
-
-FOXWORDS/
-  src/                 # React frontend (Vite)
-    main.jsx           # Entry: renders App into #root
-    App.jsx            # Simple view router + shared layout
-    LoginPage.jsx      # Login UI + calls backend
-    WordPracticePage.jsx
-    StoryReviewPage.jsx
-    SettingsPage.jsx
-    App.css
-    index.css
-  server/              # Express backend
-    index.js           # API routes
-    dictionary.json    # Demo dictionary data
-    notebook.json      # Saved words (simple JSON storage)
-    settings.json      # User settings (simple JSON storage)
+See [docs/STARTUP.md](docs/STARTUP.md) for local development details and the Home Server Docker deployment.

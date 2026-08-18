@@ -1,306 +1,188 @@
-# FoxWords 项目启动小抄
+# FoxWords 启动说明
 
-## 当前技术栈
+本文档以当前仓库中的代码和部署文件为准。
 
-前端：
+## 当前架构
 
-- React 19
-- Vite 7
-- react-router-dom 7
-- axios
-
-后端：
-
-- Node.js
-- Express 5
-- better-sqlite3
-- SQLite
-- cors
-- dotenv
-- axios
-
-AI story：
-
-- 后端调用 Ollama
-- 默认地址：`http://localhost:11434`
-- 默认模型：`qwen3:4b`
-
-## 当前目录结构简表
+本地开发时，Vite frontend 请求 Express backend；生产部署时，浏览器只访问 frontend/Nginx，Nginx 将 `/api/` 代理到 backend。需要生成故事时，backend 再通过 OpenAI-compatible API 请求 `llama-server`，由 NVIDIA GPU 执行推理。
 
 ```text
-FoxWords/
-  package.json              # 根目录前端 scripts，也代理 server scripts
-  vite.config.js            # Vite 配置
-  .env                      # 前端生产 API 地址 VITE_API_BASE_URL
-  src/
-    App.jsx                 # 路由、顶部导航、登录保护
-    HomePage.jsx
-    PatternsPage.jsx        # Patterns 页面
-    data/pattern_seed.json  # 静态句型库数据
-    apiBase.js              # DEV 下 API_BASE = http://localhost:4000
-  server/
-    package.json            # 后端 scripts
-    index.js                # Express API、Ollama story、demo login
-    db.js                   # SQLite 初始化
-    import_dictionary.js    # 导入 server/dictionary.json
-    dictionary.json
+Browser
+  → frontend / Nginx
+  → Express backend
+  → llama-server
+  → NVIDIA GPU
 ```
 
-## 根目录 scripts
+项目主要组成：
 
-以当前根目录 `package.json` 为准：
+- `src/`：React/Vite frontend
+- `server/index.js`：Express API、demo login、story generation 和 settings API
+- `server/db.js`：SQLite 初始化及数据库连接
+- `server/dictionary.json`：可导入 SQLite 的词典源数据
+- `compose.yaml`：Home Server 三服务部署
 
-```bash
-npm run dev          # vite
-npm run server       # npm --prefix server run dev
-npm run import:dict  # npm --prefix server run import:dict
-npm run build        # vite build
-npm run lint         # eslint .
-npm run preview      # vite preview
-```
+## 本地开发
 
-## server 目录 scripts
-
-以当前 `server/package.json` 为准：
-
-```bash
-npm run start        # node index.js
-npm run dev          # node index.js
-npm run import:dict  # node import_dictionary.js
-npm run test         # 当前只是占位，会退出 1
-```
-
-## 第一次启动需要做什么
-
-在项目根目录依次执行：
+首次准备：
 
 ```bash
 npm install
 npm --prefix server install
 npm run import:dict
+```
+
+`npm run import:dict` 将 `server/dictionary.json` 导入 SQLite；使用 `INSERT OR IGNORE`，重复执行不会重复插入已有词条。
+
+启动两个终端：
+
+```bash
+# 终端 1：Express backend
 npm run server
+
+# 终端 2：Vite frontend
 npm run dev
 ```
 
-说明：
+打开 `http://localhost:5173`。开发 frontend 默认请求 `http://localhost:4000`；Express 默认监听 4000，也可以通过 `PORT` 修改。
 
-- 不需要手动 `cd server`，根目录已经提供了代理脚本。
-- `npm run import:dict` 会把 `server/dictionary.json` 导入 SQLite。
-- 导入脚本使用 `INSERT OR IGNORE`，重复执行通常不会重复插入。
-- 全新数据库建议先导入字典，否则 Study / Search / Dictionary 相关功能可能没有词库数据。
-
-## 每次开发启动流程
-
-开两个终端：
-
-终端 1，启动后端：
-
-```bash
-npm run server
-```
-
-终端 2，启动前端：
+根目录 scripts：
 
 ```bash
 npm run dev
-```
-
-然后打开前端地址：
-
-```text
-http://localhost:5173
-```
-
-## 前端启动命令
-
-```bash
-npm run dev
-```
-
-## 后端启动命令
-
-```bash
 npm run server
-```
-
-根目录脚本实际执行的是：
-
-```bash
-npm --prefix server run dev
-```
-
-所以不需要手动 `cd server`。
-
-## 字典导入命令
-
-```bash
 npm run import:dict
+npm run build
+npm run lint
+npm run preview
 ```
 
-根目录脚本实际执行的是：
+server scripts：
 
 ```bash
+npm --prefix server run start
+npm --prefix server run dev
 npm --prefix server run import:dict
 ```
 
-所以也不需要手动 `cd server`。
+### 本地运行时文件
 
-## 默认端口
+如果没有设置环境变量，backend 使用：
 
-前端 Vite 默认：
+- SQLite：`server/foxwords.db`
+- settings：`server/settings.json`
 
-```text
-http://localhost:5173
-```
+这些是运行时文件，不应提交到 Git。backend 也支持通过 `DB_FILE` 和 `SETTINGS_FILE` 指定其他路径。
 
-后端 Express 默认：
+### backend 环境变量
 
-```text
-http://localhost:4000
-```
-
-前端开发环境中，`src/apiBase.js` 固定请求：
-
-```text
-http://localhost:4000
-```
-
-生产构建时前端使用根目录 `.env` 里的：
-
-```text
-VITE_API_BASE_URL=https://foxwords-api.onrender.com
-```
-
-## 后端环境变量
-
-后端使用 `dotenv`，可以在 `server/.env` 中配置：
+可在 `server/.env` 中配置本地开发值：
 
 ```text
 PORT=4000
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3:4b
+LLAMA_SERVER_URL=http://localhost:8080
+LLAMA_MODEL=foxwords
+LLAMA_TIMEOUT_MS=120000
 STORY_LIMIT=10
 ```
 
-含义：
+`LLAMA_SERVER_URL` 默认值是容器网络中的 `http://llama-server:8080`，因此本地直接运行 backend 时，如果本机另有 llama-server，应明确设置本地地址。`LLAMA_MODEL` 用于 OpenAI-compatible 请求中的 model 字段；`STORY_LIMIT` 控制故事使用的最新 notebook 单词数，范围为 1 到 30。
 
-- `PORT`：后端服务端口，默认 `4000`
-- `OLLAMA_URL`：Ollama 服务地址，默认 `http://localhost:11434`
-- `OLLAMA_MODEL`：Story 使用的模型，默认 `qwen3:4b`
-- `STORY_LIMIT`：Story 从 notebook 取多少个最新单词，默认 `10`，代码中限制为 `1` 到 `30`
+### 哪些功能需要模型
 
-## demo 登录账号
+Story 页面调用 `POST /api/story` 时，backend 请求：
+
+```text
+${LLAMA_SERVER_URL}/v1/chat/completions
+```
+
+需要 notebook 中至少有一个单词，并且 llama-server 已启动且已加载模型。模型未启动、仍在加载、连接失败或超时，backend 会返回错误响应。
+
+登录、Home、Books、Study、Notebook、Patterns、Settings 和字典搜索不需要实际生成请求；Study / Search 仍需要 SQLite 中已有词典数据。
+
+Demo 登录账号：
 
 ```text
 Email: test@example.com
 Password: 123456
 ```
 
-登录接口在后端 `/api/login`，成功后返回 demo token。
+## Home Server Docker 部署
 
-## Ollama / AI story 功能需要什么
-
-不需要 Ollama 才能打开项目、登录、访问 Home / Books / Study / Notebook / Patterns / Settings。
-
-只有 Story 生成功能需要 Ollama。后端 `/api/story` 会：
-
-- 从 notebook 里取最新单词
-- 请求 `OLLAMA_URL/api/generate`
-- 使用 `OLLAMA_MODEL` 指定的模型
-
-如果要使用 Story，通常需要：
-
-```bash
-ollama serve
-ollama pull qwen3:4b
-```
-
-如果 Ollama 已经作为后台服务运行，不需要重复执行 `ollama serve`。
-
-## Patterns 页面怎么访问
-
-`/patterns` 已经加入：
-
-- 顶部导航按钮：`Patterns`
-- 受 `RequireAuth` 保护的 route：`/patterns`
-- 首页入口卡片：`Patterns`
-
-访问方式：
+部署目录：
 
 ```text
-http://localhost:5173/patterns
+/home/ethan/srv/apps/foxwords
 ```
 
-需要先登录。Patterns 是纯静态页面，数据来自：
+模型目录：
 
 ```text
-src/data/pattern_seed.json
+/home/ethan/srv/shared/models/
 ```
 
-不需要后端、不需要数据库、不需要 Ollama。
+当前示例模型文件名为 `Qwen3-8B-Q4_K_M.gguf`。文件由部署者准备；本项目不会下载模型。Compose 将模型目录只读挂载到 llama-server 容器的 `/models`。
 
-## 常见启动问题和解决方式
+### 网络与端口
 
-`npm run dev` 打开后登录失败：
+只有 frontend 发布宿主机端口：
 
-通常是后端没启动。先跑：
+```text
+127.0.0.1:8084 → frontend container port 80
+```
+
+frontend 同时连接 `foxwords_edge` 和 `foxwords_private`；backend 和 llama-server 只连接 `foxwords_private`。`foxwords_private` 是 internal network。backend 的 4000 和 llama-server 的 8080 均不发布到宿主机。Nginx 的 `/api/` 反向代理目标是 `backend:4000`，生产 frontend 使用同源 `/api`。
+
+### 环境文件和启动
+
+不要把部署环境文件加入 Git。复制示例并填写实际 GGUF 文件名：
 
 ```bash
-npm run server
+cd /home/ethan/srv/apps/foxwords
+cp .env.deploy.example .env.deploy
 ```
 
-Study / 搜索没有词：
+至少确认：
 
-可能没导入字典。跑一次：
+```text
+LLAMA_MODEL_FILE=Qwen3-8B-Q4_K_M.gguf
+LLAMA_MODEL=foxwords
+```
+
+`LLAMA_IMAGE` 可用于固定 llama.cpp image/tag；GPU offload、context、并行数和 timeout 也可以通过示例中的环境变量调整。不要在该文件中写入 secrets。
+
+模型准备好后启动：
 
 ```bash
-npm run import:dict
+docker compose --env-file .env.deploy up -d --build
 ```
 
-Story 生成失败：
-
-通常是 Ollama 没启动、模型没下载、notebook 为空，或模型名不匹配。检查：
+停止或查看状态：
 
 ```bash
-ollama serve
-ollama pull qwen3:4b
+docker compose --env-file .env.deploy ps
+docker compose --env-file .env.deploy logs -f frontend backend llama-server
 ```
 
-如果 Ollama 已经在后台运行，只需要确认模型存在即可：
+本阶段没有模型时，不要启动完整推理服务；只可先检查 Compose 配置：
 
 ```bash
-ollama pull qwen3:4b
+LLAMA_MODEL_FILE=validation-placeholder.gguf \
+  docker compose --env-file .env.deploy.example config
 ```
 
-PowerShell 提示 `npm.ps1` 被禁止运行：
+### Docker 持久化
 
-这是 Windows execution policy 问题，可以改用：
+Compose 将项目目录下的 `./data` 挂载到 backend 的 `/data`：
 
-```bash
-cmd /c npm run dev
-cmd /c npm run server
-cmd /c npm run import:dict
-```
+- SQLite：`/data/foxwords.db`
+- settings：`/data/settings.json`
 
-端口冲突：
+因此重建 container 不会丢失 notebook、dictionary 数据或用户 settings。`data/`、数据库文件、settings 文件、`.env.deploy` 和模型文件均已加入 Git 忽略规则。
 
-- 前端 Vite 会提示换端口。
-- 后端默认 `4000`，如果被占用，可以在 `server/.env` 设置 `PORT`。
+## 常见问题
 
-## 最短启动版
-
-每天开发通常只需要两个终端：
-
-```bash
-npm run server
-```
-
-```bash
-npm run dev
-```
-
-第一次或词库为空时，再跑一次：
-
-```bash
-npm run import:dict
-```
+- 登录或 API 请求失败：确认 backend 已启动，并检查 `GET /api/health`。
+- Study / 搜索没有词：运行 `npm run import:dict`。
+- Story 失败：确认 notebook 非空、`LLAMA_SERVER_URL` 可访问、`LLAMA_MODEL` 与 llama-server 的 model alias 一致，并等待模型完成加载。
+- 本地端口冲突：通过 `PORT` 修改 backend 端口；Vite 会提示可用端口。
