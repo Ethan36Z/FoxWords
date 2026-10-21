@@ -1,18 +1,14 @@
-/* eslint-disable no-undef */
-/* eslint-env node */
-
 require("dotenv").config();
-const path = require("path");
-const fsp = require("fs/promises");
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 
 const db = require("./db");
+const { importDictionaryIfChanged } = require("./import_dictionary");
 
 const app = express();
 
-// ✅ env 配置
+// Environment config
 const PORT = Number(process.env.PORT || 4000);
 const LLAMA_SERVER_URL = (process.env.LLAMA_SERVER_URL || "http://llama-server:8080").replace(/\/$/, "");
 const LLAMA_MODEL = process.env.LLAMA_MODEL || "foxwords";
@@ -22,16 +18,13 @@ const STORY_LIMIT = Math.max(1, Math.min(Number(process.env.STORY_LIMIT || 10), 
 app.use(cors());
 app.use(express.json());
 
-const SETTINGS_FILE = process.env.SETTINGS_FILE || path.join(__dirname, "settings.json");
-
 // -------------------- health --------------------
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
 
 // -------------------- notebook (SQLite) --------------------
-// GET notebook (paginated)
-// GET notebook (paged)  /api/notebook?limit=20&offset=0
+// GET /api/notebook?limit=20&offset=0
 app.get("/api/notebook", (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
@@ -39,10 +32,12 @@ app.get("/api/notebook", (req, res) => {
 
     const total = db.prepare("SELECT COUNT(*) AS c FROM notebook").get().c;
 
-    // ✅ 注意：这里把 translation 也带上（如果你表里没有 translation 列，先看下面第 1.5 步）
     const items = db
       .prepare(
-        "SELECT id, word, translation, definition, createdAt FROM notebook ORDER BY id DESC LIMIT ? OFFSET ?"
+        `SELECT n.id, n.word, n.translation, n.definition, n.createdAt,
+                COALESCE(d.phonetic, '') AS phonetic
+         FROM notebook n LEFT JOIN dictionary d ON d.word = n.word
+         ORDER BY n.id DESC LIMIT ? OFFSET ?`
       )
       .all(limit, offset);
 
@@ -174,42 +169,64 @@ After the English story, also give a brief Chinese summary (1-2 sentences).
   }
 });
 
-// -------------------- settings (JSON) --------------------
-async function readSettings() {
-  try {
-    const raw = await fsp.readFile(SETTINGS_FILE, "utf-8");
-    if (!raw.trim()) return { exampleFirst: true, dailyGoal: 20 };
-    return JSON.parse(raw);
-  } catch (err) {
-    if (err.code === "ENOENT") return { exampleFirst: true, dailyGoal: 20 };
-    console.error("Failed to read settings:", err);
-    throw err;
-  }
+// -------------------- settings (SQLite) --------------------
+const MAX_DAILY_GOAL = 500;
+const STUDY_MIXES = ["new", "mixed", "review"];
+
+// Word books are the exam vocabularies tagged in ECDICT. Lists overlap: a
+// CET-4 word is usually also a 考研 word.
+const BOOKS = [
+  { id: "zk", title: "中考", desc: "初中阶段核心词汇" },
+  { id: "gk", title: "高考", desc: "高中阶段核心词汇" },
+  { id: "cet4", title: "大学英语四级", desc: "CET-4 考试词汇" },
+  { id: "cet6", title: "大学英语六级", desc: "CET-6 考试词汇" },
+  { id: "ky", title: "考研", desc: "研究生入学考试词汇" },
+  { id: "ielts", title: "雅思", desc: "IELTS 考试词汇" },
+  { id: "toefl", title: "托福", desc: "TOEFL 考试词汇" },
+];
+const BOOK_IDS = BOOKS.map((b) => b.id);
+// SQL condition: the dictionary row d belongs to the book bound as ?
+const IN_BOOK = "(? = '' OR (' ' || d.tags || ' ') LIKE '% ' || ? || ' %')";
+
+function readSettings() {
+  const row = db
+    .prepare("SELECT exampleFirst, dailyGoal, studyMix, book FROM settings WHERE id = 1")
+    .get();
+  return {
+    exampleFirst: Boolean(row.exampleFirst),
+    dailyGoal: row.dailyGoal,
+    studyMix: STUDY_MIXES.includes(row.studyMix) ? row.studyMix : "mixed",
+    book: BOOK_IDS.includes(row.book) ? row.book : "",
+  };
 }
 
-async function writeSettings(settings) {
-  await fsp.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf-8");
-}
-
-app.get("/api/settings", async (req, res) => {
+app.get("/api/settings", (req, res) => {
   try {
-    const settings = await readSettings();
-    res.json(settings);
+    res.json(readSettings());
   } catch (err) {
     console.error("GET /api/settings error:", err);
     res.status(500).json({ error: "Failed to load settings" });
   }
 });
 
-app.put("/api/settings", async (req, res) => {
+app.put("/api/settings", (req, res) => {
   try {
     const incoming = req.body || {};
-    const settings = {
-      exampleFirst: typeof incoming.exampleFirst === "boolean" ? incoming.exampleFirst : true,
-      dailyGoal: typeof incoming.dailyGoal === "number" ? incoming.dailyGoal : 20,
-    };
-    await writeSettings(settings);
-    res.json({ ok: true });
+    const current = readSettings();
+    const exampleFirst =
+      typeof incoming.exampleFirst === "boolean" ? incoming.exampleFirst : current.exampleFirst;
+    const goal = Number(incoming.dailyGoal);
+    const dailyGoal = Number.isFinite(goal)
+      ? Math.min(MAX_DAILY_GOAL, Math.max(1, Math.round(goal)))
+      : current.dailyGoal;
+    const studyMix = STUDY_MIXES.includes(incoming.studyMix) ? incoming.studyMix : current.studyMix;
+    const book =
+      incoming.book === "" || BOOK_IDS.includes(incoming.book) ? incoming.book : current.book;
+
+    db.prepare(
+      "UPDATE settings SET exampleFirst = ?, dailyGoal = ?, studyMix = ?, book = ? WHERE id = 1"
+    ).run(exampleFirst ? 1 : 0, dailyGoal, studyMix, book);
+    res.json({ ok: true, exampleFirst, dailyGoal, studyMix, book });
   } catch (err) {
     console.error("Failed to save settings:", err);
     res.status(500).json({ error: "Failed to save settings" });
@@ -217,6 +234,8 @@ app.put("/api/settings", async (req, res) => {
 });
 
 // -------------------- dictionary search (SQLite) --------------------
+const WORD_COLUMNS = "id, word, phonetic, translation, definition, example, exampleZh, level";
+
 app.get("/api/dictionary", (req, res) => {
   try {
     const q = String(req.query.q || "").trim().toLowerCase();
@@ -228,7 +247,7 @@ app.get("/api/dictionary", (req, res) => {
     const rows = db
       .prepare(
         `
-        SELECT id, word, translation, definition, example
+        SELECT ${WORD_COLUMNS}
         FROM dictionary
         WHERE lower(word) LIKE ? OR lower(word) LIKE ?
         ORDER BY
@@ -265,51 +284,95 @@ app.post("/api/login", (req, res) => {
   return res.status(401).json({ error: "Invalid email or password" });
 });
 
-// -------------------- words/today --------------------
-let todayCache = { dayKey: "", limit: 0, rows: [] };
+// -------------------- study batches --------------------
+// A word is "unfamiliar" while the learner has answered 不认识 more often
+// than 认识. Answering 认识 enough times moves it out of the review pool.
+const UNFAMILIAR = "s.unknownCount > s.knownCount AND s.tooEasy = 0";
+// Share of review words in a "mixed" batch
+const MIXED_REVIEW_SHARE = 0.3;
+
+// New = never answered (and so never marked 太简单), from the chosen book
+function pickNewWords(limit, book) {
+  return db
+    .prepare(
+      `SELECT ${WORD_COLUMNS} FROM dictionary d
+       WHERE NOT EXISTS (SELECT 1 FROM word_stats s WHERE s.word = d.word)
+         AND ${IN_BOOK}
+       ORDER BY RANDOM() LIMIT ?`
+    )
+    .all(book, book, limit);
+}
+
+function pickReviewWords(limit) {
+  // Most-missed words first, then the ones not seen for the longest time
+  return db
+    .prepare(
+      `SELECT ${WORD_COLUMNS.split(", ").map((c) => "d." + c).join(", ")},
+              s.unknownCount, s.knownCount
+       FROM word_stats s JOIN dictionary d ON d.word = s.word
+       WHERE ${UNFAMILIAR}
+       ORDER BY (s.unknownCount - s.knownCount) DESC, s.lastSeenAt ASC, RANDOM()
+       LIMIT ?`
+    )
+    .all(limit)
+    .map((w) => ({ ...w, isReview: true }));
+}
+
+// Spread review words evenly through the batch instead of bunching them up
+function interleave(newWords, reviewWords) {
+  const total = newWords.length + reviewWords.length;
+  // e.g. 3 review words in 10 slots go to positions 2, 5 and 9
+  const reviewSlots = new Set(
+    reviewWords.map((_, i) => Math.floor(((i + 1) * total) / reviewWords.length) - 1)
+  );
+  const out = [];
+  let r = 0;
+  let n = 0;
+  for (let i = 0; i < total; i++) {
+    out.push(reviewSlots.has(i) ? reviewWords[r++] : newWords[n++]);
+  }
+  return out;
+}
+
+// Review words come from every book: an unfamiliar word stays worth reviewing
+function buildBatch(limit, mix, book) {
+  if (mix === "new") return pickNewWords(limit, book);
+  if (mix === "review") return pickReviewWords(limit);
+
+  const review = pickReviewWords(Math.round(limit * MIXED_REVIEW_SHARE));
+  const fresh = pickNewWords(limit - review.length, book);
+  return interleave(fresh, review);
+}
+
+let todayCache = { key: "", rows: [] };
 function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-app.get("/api/words/today", async (req, res) => {
+app.get("/api/words/today", (req, res) => {
   try {
-    const hardMax = 50;
-
-    let dailyGoal = 20;
-    try {
-      const s = await readSettings();
-      if (typeof s.dailyGoal === "number" && s.dailyGoal > 0) dailyGoal = s.dailyGoal;
-    } catch (err) {
-      console.error("readSettings failed in /api/words/today:", err);
-    }
+    const { dailyGoal, studyMix, book } = readSettings();
 
     const qLimit = parseInt(String(req.query.limit || "0"), 10);
     const want = qLimit > 0 ? qLimit : dailyGoal;
-    const limit = Math.min(hardMax, Math.max(1, want));
+    const limit = Math.min(MAX_DAILY_GOAL, Math.max(1, want));
 
-    // ✅ 新增：refresh=1 时强制换一批（跳过缓存）
+    // refresh=1 skips the cache and picks a new batch
     const refresh = String(req.query.refresh || "") === "1";
+    const key = `${getDayKey()}|${limit}|${studyMix}|${book}`;
 
-    const dayKey = getDayKey();
-
-    // ✅ 只有在不 refresh 时才走缓存
-    if (!refresh && todayCache.dayKey === dayKey && todayCache.limit === limit) {
+    if (!refresh && todayCache.key === key) {
+      // Drop words marked 太简单 since the batch was built
+      const easy = new Set(
+        db.prepare("SELECT word FROM word_stats WHERE tooEasy = 1").all().map((r) => r.word)
+      );
+      todayCache.rows = todayCache.rows.filter((w) => !easy.has(w.word));
       return res.json(todayCache.rows);
     }
 
-    const rows = db
-      .prepare(
-        `
-        SELECT id, word, translation, definition, example
-        FROM dictionary
-        ORDER BY RANDOM()
-        LIMIT ?
-      `
-      )
-      .all(limit);
-
-    // ✅ 无论 refresh 与否，都更新缓存（这样下一次不 refresh 会复用最新这批）
-    todayCache = { dayKey, limit, rows };
+    const rows = buildBatch(limit, studyMix, book);
+    // Always cache the latest batch so the next normal load reuses it
+    todayCache = { key, rows };
 
     res.json(rows);
   } catch (err) {
@@ -318,10 +381,108 @@ app.get("/api/words/today", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`FoxWords backend running on port ${PORT}`);
-  console.log("SETTINGS_FILE:", SETTINGS_FILE);
-  console.log("LLAMA_SERVER_URL:", LLAMA_SERVER_URL);
-  console.log("LLAMA_MODEL:", LLAMA_MODEL);
-  console.log("STORY_LIMIT:", STORY_LIMIT);
+// Record one answer on a study card:
+// { word, result: "known" | "unknown" | "easy" }  ("easy" = 太简单, never show again)
+app.post("/api/words/review", (req, res) => {
+  try {
+    const word = String(req.body?.word || "").trim();
+    const result = req.body?.result;
+    if (!word || !["known", "unknown", "easy"].includes(result)) {
+      return res.status(400).json({ error: "word and result (known|unknown|easy) are required" });
+    }
+
+    // 太简单 only sets the flag; it doesn't count as a 认识 answer
+    const known = result === "known" ? 1 : 0;
+    const unknown = result === "unknown" ? 1 : 0;
+    const easy = result === "easy" ? 1 : 0;
+    db.prepare(
+      `INSERT INTO word_stats (word, knownCount, unknownCount, lastResult, lastSeenAt, tooEasy)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(word) DO UPDATE SET
+         knownCount = knownCount + excluded.knownCount,
+         unknownCount = unknownCount + excluded.unknownCount,
+         lastResult = excluded.lastResult,
+         lastSeenAt = excluded.lastSeenAt,
+         tooEasy = MAX(tooEasy, excluded.tooEasy)`
+    ).run(word, known, unknown, result, new Date().toISOString(), easy);
+
+    const stats = db
+      .prepare("SELECT word, knownCount, unknownCount, tooEasy FROM word_stats WHERE word = ?")
+      .get(word);
+    res.json({
+      word: stats.word,
+      knownCount: stats.knownCount,
+      unknownCount: stats.unknownCount,
+      tooEasy: Boolean(stats.tooEasy),
+      unfamiliar: !stats.tooEasy && stats.unknownCount > stats.knownCount,
+    });
+  } catch (err) {
+    console.error("POST /api/words/review error:", err);
+    res.status(500).json({ error: "Failed to save review" });
+  }
 });
+
+// Undo 太简单 for one word, e.g. from a future "easy words" list
+app.delete("/api/words/easy/:word", (req, res) => {
+  try {
+    const info = db.prepare("UPDATE word_stats SET tooEasy = 0 WHERE word = ?").run(req.params.word);
+    res.json({ ok: true, changed: info.changes });
+  } catch (err) {
+    console.error("DELETE /api/words/easy error:", err);
+    res.status(500).json({ error: "Failed to update word" });
+  }
+});
+
+// Word books with size and progress
+app.get("/api/books", (req, res) => {
+  try {
+    const count = db.prepare(
+      `SELECT COUNT(*) AS total,
+              COALESCE(SUM(CASE WHEN s.word IS NOT NULL THEN 1 ELSE 0 END), 0) AS seen,
+              COALESCE(SUM(CASE WHEN s.tooEasy = 1 THEN 1 ELSE 0 END), 0) AS tooEasy
+       FROM dictionary d LEFT JOIN word_stats s ON s.word = d.word
+       WHERE ${IN_BOOK}`
+    );
+    const { book } = readSettings();
+    const books = [{ id: "", title: "全部单词", desc: "词典里的所有单词，难度随机" }, ...BOOKS].map(
+      (b) => ({ ...b, ...count.get(b.id, b.id), selected: b.id === book })
+    );
+    res.json(books);
+  } catch (err) {
+    console.error("GET /api/books error:", err);
+    res.status(500).json({ error: "Failed to load books" });
+  }
+});
+
+// Totals for the home page
+app.get("/api/words/stats", (req, res) => {
+  try {
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS seen,
+                COALESCE(SUM(CASE WHEN ${UNFAMILIAR} THEN 1 ELSE 0 END), 0) AS unfamiliar,
+                COALESCE(SUM(s.tooEasy), 0) AS tooEasy
+         FROM word_stats s`
+      )
+      .get();
+    const total = db.prepare("SELECT COUNT(*) AS c FROM dictionary").get().c;
+    res.json({ ...row, dictionary: total });
+  } catch (err) {
+    console.error("GET /api/words/stats error:", err);
+    res.status(500).json({ error: "Failed to load stats" });
+  }
+});
+
+if (require.main === module) {
+  const imported = importDictionaryIfChanged();
+  if (imported !== null) console.log("dictionary.json changed, imported words:", imported);
+
+  app.listen(PORT, () => {
+    console.log(`FoxWords backend running on port ${PORT}`);
+    console.log("LLAMA_SERVER_URL:", LLAMA_SERVER_URL);
+    console.log("LLAMA_MODEL:", LLAMA_MODEL);
+    console.log("STORY_LIMIT:", STORY_LIMIT);
+  });
+}
+
+module.exports = app;

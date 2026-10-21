@@ -3,3 +3,5 @@ node_modules
 foxwords.db*
 settings.json
 npm-debug.log*
+.dict-src
+test

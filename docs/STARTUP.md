@@ -19,7 +19,7 @@ Browser
 - `src/`：React/Vite frontend
 - `server/index.js`：Express API、demo login、story generation 和 settings API
 - `server/db.js`：SQLite 初始化及数据库连接
-- `server/dictionary.json`：可导入 SQLite 的词典源数据
+- `server/dictionary.json`：词典数据（约 1 万词，含音标和部分例句），由 `server/build_dictionary.py` 生成
 - `compose.yaml`：Home Server 三服务部署
 
 ## 本地开发
@@ -32,7 +32,27 @@ npm --prefix server install
 npm run import:dict
 ```
 
-`npm run import:dict` 将 `server/dictionary.json` 导入 SQLite；使用 `INSERT OR IGNORE`，重复执行不会重复插入已有词条。
+需要 Node.js 22 或更新版本。
+
+`npm run import:dict` 将 `server/dictionary.json` 导入 SQLite，词典表会和文件完全一致（文件里没有的词会被删掉，生词本和学习记录不受影响）。backend 启动时如果发现 `dictionary.json` 有变化，也会自动导入，所以平时不需要手动运行。
+
+### 重新生成词典
+
+`server/dictionary.json` 来自两个开源数据集，原始文件不提交到 Git：
+
+- [ECDICT](https://github.com/skywind3000/ECDICT)（MIT）：单词、音标、中英释义、考试标签、词频
+- [Tatoeba](https://tatoeba.org) 中英句对（CC-BY 2.0 FR，下载自 [manythings.org](https://www.manythings.org/anki/)）：例句及中文翻译
+
+```bash
+cd server
+mkdir -p .dict-src/ecdict .dict-src/tatoeba
+curl -L -o .dict-src/ecdict/ecdict.csv https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv
+curl -L -o .dict-src/tatoeba/cmn-eng.zip https://www.manythings.org/anki/cmn-eng.zip
+unzip -o .dict-src/tatoeba/cmn-eng.zip -d .dict-src/tatoeba
+python3 -I build_dictionary.py .dict-src/ecdict/ecdict.csv .dict-src/tatoeba/cmn.txt dictionary.json
+```
+
+脚本会收录带考试标签（中考、高考、四级、六级、考研、雅思、托福）的全部单词，去掉 went、apples 这类变形词，按难度和词频排序。每个词配一条 5–14 个词的例句，只用有简体中文翻译的句子。目前约 31% 的词有例句，其余可以以后用 AI 生成。
 
 启动两个终端：
 
@@ -63,16 +83,20 @@ server scripts：
 npm --prefix server run start
 npm --prefix server run dev
 npm --prefix server run import:dict
+npm --prefix server test
 ```
+
+`npm --prefix server test` 运行后端 API 测试，每次使用临时数据库，不会碰到真实数据。
 
 ### 本地运行时文件
 
 如果没有设置环境变量，backend 使用：
 
-- SQLite：`server/foxwords.db`
-- settings：`server/settings.json`
+- SQLite：`server/foxwords.db`（生词本、词典和用户设置都在这里）
 
-这些是运行时文件，不应提交到 Git。backend 也支持通过 `DB_FILE` 和 `SETTINGS_FILE` 指定其他路径。
+这是运行时文件，不应提交到 Git。backend 支持通过 `DB_FILE` 指定其他路径。
+
+旧版本把设置存在 `settings.json`。新版本第一次启动时会把这个文件里的设置导入数据库（路径可用 `SETTINGS_FILE` 指定），之后只使用数据库；旧文件会保留，确认无误后可以删除。
 
 ### backend 环境变量
 
@@ -175,8 +199,8 @@ LLAMA_MODEL_FILE=validation-placeholder.gguf \
 
 Compose 将项目目录下的 `./data` 挂载到 backend 的 `/data`：
 
-- SQLite：`/data/foxwords.db`
-- settings：`/data/settings.json`
+- SQLite：`/data/foxwords.db`（生词本、词典和用户设置）
+- `/data/settings.json`：仅用于第一次启动时导入旧版设置
 
 因此重建 container 不会丢失 notebook、dictionary 数据或用户 settings。`data/`、数据库文件、settings 文件、`.env.deploy` 和模型文件均已加入 Git 忽略规则。
 
@@ -184,5 +208,6 @@ Compose 将项目目录下的 `./data` 挂载到 backend 的 `/data`：
 
 - 登录或 API 请求失败：确认 backend 已启动，并检查 `GET /api/health`。
 - Study / 搜索没有词：运行 `npm run import:dict`。
+- 单词发音没有声音：发音用的是浏览器自带的语音合成，请确认系统里装了英文语音（macOS：系统设置 → 辅助功能 → 朗读内容）。
 - Story 失败：确认 notebook 非空、`LLAMA_SERVER_URL` 可访问、`LLAMA_MODEL` 与 llama-server 的 model alias 一致，并等待模型完成加载。
 - 本地端口冲突：通过 `PORT` 修改 backend 端口；Vite 会提示可用端口。

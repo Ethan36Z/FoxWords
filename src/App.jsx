@@ -1,6 +1,6 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
-import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { API_BASE } from "./apiBase";
 
 import HomePage from "./HomePage";
@@ -10,16 +10,20 @@ import LoginPage from "./LoginPage";
 import StoryReviewPage from "./StoryReviewPage";
 import PatternsPage from "./PatternsPage";
 import PatternPracticePage from "./PatternPracticePage";
-
 import BooksPage from "./BooksPage";
 import NotebookPage from "./NotebookPage";
-
-// ✅ 只保留这一个
 import SearchOverlay from "./SearchOverlay";
 
+const NAV_ITEMS = [
+  { to: "/", label: "首页", end: true },
+  { to: "/books", label: "词书" },
+  { to: "/study", label: "学习" },
+  { to: "/patterns", label: "句型" },
+  { to: "/notebook", label: "生词本" },
+  { to: "/review", label: "故事" },
+];
 
-
-// ✅ 守门：缺 token 或 email 都算未登录（更合理）
+// Logged in = both token and email are stored
 function RequireAuth({ children }) {
   const token = localStorage.getItem("foxwords_token");
   const email = localStorage.getItem("foxwords_email");
@@ -31,315 +35,182 @@ function RequireAuth({ children }) {
   return children;
 }
 
+function readStoredUser() {
+  try {
+    const email = localStorage.getItem("foxwords_email");
+    const token = localStorage.getItem("foxwords_token");
+    return email && token ? { email, token } : null;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
-
-  console.log("🐾 API_BASE at runtime:", API_BASE);
-
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(readStoredUser);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // ====== Global Search Overlay states ======
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-  const [searchResults, setSearchResults] = useState([]);
+  const menuRef = useRef(null);
 
   const navigate = useNavigate();
   const location = useLocation();
   const isLogin = location.pathname === "/login";
 
-  // ✅ 启动恢复：只跑一次
+  // Close the account menu when clicking elsewhere
   useEffect(() => {
-    try {
-      const email = localStorage.getItem("foxwords_email");
-      const token = localStorage.getItem("foxwords_token");
-      if (email && token) setUser({ email, token });
-    } catch (e) {
-      console.warn("localStorage not available:", e);
-    }
-  }, []);
-
-  // ✅ 搜索：仅在浮层打开时，debounce 查询字典（避免每个字符都请求）/与Overlay功能重复
-  useEffect(() => {
-    if (!searchOpen) return;
-
-    const q = String(searchQuery || "").trim();
-    if (!q) {
-      setSearchResults([]);
-      setSearchError(null);
-      setSearchLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const t = setTimeout(async () => {
-      try {
-        setSearchLoading(true);
-        setSearchError(null);
-
-        const url = `${API_BASE}/api/dictionary?q=${encodeURIComponent(q)}&limit=20&offset=0`;
-        const res = await fetch(url, { signal: controller.signal });
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) throw new Error(data?.error || "Search failed");
-
-        setSearchResults(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (e.name !== "AbortError") {
-          setSearchError(e.message || "Search failed");
-          setSearchResults([]);
-        }
-      } finally {
-        setSearchLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      clearTimeout(t);
-      controller.abort();
+    if (!menuOpen) return;
+    const onDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     };
-  }, [searchOpen, searchQuery]);
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
-  // ✅ 点击加入生词本（给 SearchOverlay 用）
-  async function addToNotebookFromSearch(wordObj) {
-    const token = localStorage.getItem("foxwords_token") || "";
+  // "/" or Cmd/Ctrl+K opens dictionary search from anywhere
+  useEffect(() => {
+    if (isLogin) return;
+    const onKey = (e) => {
+      const tag = e.target?.tagName;
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !typing)) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLogin]);
 
-    const res = await fetch(`${API_BASE}/api/notebook`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // 你现在后端不校验这个，但留着更“真实项目”
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        word: wordObj.word,
-        translation: wordObj.translation || "",
-        definition: wordObj.definition || "",
-      }),
-    });
+  const goTo = (path) => {
+    setMenuOpen(false);
+    navigate(path);
+  };
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || "Add failed");
-    return data;
-  }
+  const logout = () => {
+    try {
+      localStorage.removeItem("foxwords_email");
+      localStorage.removeItem("foxwords_token");
+    } catch (e) {
+      console.warn("localStorage remove failed:", e);
+    }
+    setUser(null);
+    setMenuOpen(false);
+    navigate("/login");
+  };
+
+  const initial = (user?.email || "?").trim().charAt(0).toUpperCase();
 
   return (
-  <div className="app-shell">
-    {!isLogin && (
-      <header className="app-header">
-        <div className="app-header__inner">
-          <div
-            className="brand"
-            onClick={() => {
-              setMenuOpen(false);
-              navigate("/");
-            }}
-            
-          >
-            FoxWords 🦊
-          </div>
+    <div className="app-shell">
+      {!isLogin && (
+        <header className="app-header">
+          <div className="app-header__inner">
+            <NavLink to="/" className="brand" aria-label="FoxWords 首页">
+              <span className="brand-mark" aria-hidden="true">🦊</span>
+              <span className="brand-name">FoxWords</span>
+            </NavLink>
 
-          <nav className="nav">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/")}>
-              Home
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/books")}>
-              Books
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/study")}>
-              Study
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/patterns")}>
-              Patterns
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/notebook")}>
-              Notebook
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/review")}>
-              Story
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/settings")}>
-              Settings
-            </button>
-          </nav>
+            <nav className="nav" aria-label="主导航">
+              {NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
 
-          {/* 右侧：搜索入口 + 头像菜单 */}
-          <div className="header-right">
-            <input
-              className="input header-search"
-              placeholder="Search word... (Enter)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setSearchOpen(true);
-                if (e.key === "Escape") setSearchOpen(false);
-              }}
-            />
+            <div className="header-right">
+              <button
+                type="button"
+                className="search-trigger"
+                onClick={() => setSearchOpen(true)}
+                aria-label="搜索单词"
+              >
+                <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                  <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <span className="search-trigger__text">搜索单词</span>
+                <kbd className="kbd">/</kbd>
+              </button>
 
-            <div className="userbox">
-              <div className="userbox-top">
-                <button className="avatar-btn" onClick={() => setMenuOpen((prev) => !prev)}>
-                  Q
+              <div className="userbox" ref={menuRef}>
+                <button
+                  type="button"
+                  className="avatar-btn"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  aria-label="账户菜单"
+                >
+                  {initial}
                 </button>
+
+                {menuOpen && (
+                  <div className="menu" role="menu">
+                    <div className="menu-head">
+                      <div className="menu-head__label">已登录</div>
+                      <div className="menu-head__email">{user?.email || "未登录用户"}</div>
+                    </div>
+                    <button type="button" className="menu-item" role="menuitem" onClick={() => goTo("/notebook")}>
+                      生词本
+                    </button>
+                    <button type="button" className="menu-item" role="menuitem" onClick={() => goTo("/settings")}>
+                      设置
+                    </button>
+                    <button type="button" className="menu-item menu-item--danger" role="menuitem" onClick={logout}>
+                      退出登录
+                    </button>
+                  </div>
+                )}
               </div>
-
-              <div className="user-email">{user?.email || "未登录用户"}</div>
-
-              {menuOpen && (
-                <div className="menu">
-                  <div
-                    className="menu-item"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate("/notebook");
-                    }}
-                  >
-                    Notebook / 生词本
-                  </div>
-
-                  <div
-                    className="menu-item"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate("/settings");
-                    }}
-                  >
-                    Settings / 设置
-                  </div>
-
-                  <div
-                    className="menu-item menu-item--danger"
-                    onClick={() => {
-                      try {
-                        localStorage.removeItem("foxwords_email");
-                        localStorage.removeItem("foxwords_token");
-                      } catch (e) {
-                        console.warn("localStorage remove failed:", e);
-                      }
-                      setUser(null);
-                      setMenuOpen(false);
-                      navigate("/login");
-                    }}
-                  >
-                    Logout
-                  </div>
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      </header>
-    )}
+        </header>
+      )}
 
-    <main className={`app-main ${isLogin ? "app-main--login" : ""}`}>
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            <LoginPage
-              apiBase={API_BASE}
-              onLogin={(u) => {
-                try {
-                  if (u?.email) localStorage.setItem("foxwords_email", u.email);
-                  if (u?.token) localStorage.setItem("foxwords_token", u.token);
-                } catch (e) {
-                  console.warn("localStorage set failed:", e);
-                }
+      <main className={`app-main ${isLogin ? "app-main--login" : ""}`}>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                apiBase={API_BASE}
+                onLogin={(u) => {
+                  try {
+                    if (u?.email) localStorage.setItem("foxwords_email", u.email);
+                    if (u?.token) localStorage.setItem("foxwords_token", u.token);
+                  } catch (e) {
+                    console.warn("localStorage set failed:", e);
+                  }
+                  setUser(u);
+                  const from = location.state?.from || "/";
+                  navigate(from, { replace: true });
+                }}
+              />
+            }
+          />
 
-                setUser(u);
+          <Route path="/" element={<RequireAuth><HomePage onNavigate={(p) => navigate(p)} /></RequireAuth>} />
+          <Route path="/books" element={<RequireAuth><BooksPage onNavigate={(p) => navigate(p)} /></RequireAuth>} />
+          <Route path="/notebook" element={<RequireAuth><NotebookPage /></RequireAuth>} />
+          <Route path="/study" element={<RequireAuth><WordPracticePage /></RequireAuth>} />
+          <Route path="/patterns" element={<RequireAuth><PatternsPage /></RequireAuth>} />
+          <Route path="/patterns/practice" element={<RequireAuth><PatternPracticePage /></RequireAuth>} />
+          <Route path="/review" element={<RequireAuth><StoryReviewPage /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
 
-                const from = location.state?.from || "/";
-                navigate(from, { replace: true });
-              }}
-            />
-          }
-        />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
 
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <HomePage onNavigate={(p) => navigate(p)} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/books"
-          element={
-            <RequireAuth>
-              <BooksPage onNavigate={(p) => navigate(p)} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/notebook"
-          element={
-            <RequireAuth>
-              <NotebookPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/study"
-          element={
-            <RequireAuth>
-              <WordPracticePage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/patterns"
-          element={
-            <RequireAuth>
-              <PatternsPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/patterns/practice"
-          element={
-            <RequireAuth>
-              <PatternPracticePage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/review"
-          element={
-            <RequireAuth>
-              <StoryReviewPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <RequireAuth>
-              <SettingsPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </main>
-
-    {/* ✅ 全局搜索浮层挂在最外层，任何页面都能浮起来 */}
-    <SearchOverlay
-      open={searchOpen}
-      onClose={() => setSearchOpen(false)}
-      query={searchQuery}
-      setQuery={setSearchQuery}
-      loading={searchLoading}
-      error={searchError}
-      results={searchResults}
-      onAdd={addToNotebookFromSearch}
-    />
-  </div>
-);
+      {/* Global search overlay: it owns its own query, results and requests */}
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </div>
+  );
 }
-
 
 export default App;
