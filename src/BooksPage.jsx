@@ -1,78 +1,99 @@
-import { useState } from "react";
-import AddBookModal from "./AddBookModal";
+import { useEffect, useState } from "react";
+import { API_BASE } from "./apiBase";
 
+// Word books = exam vocabularies. Picking one makes new study words come from it.
 function BooksPage({ onNavigate }) {
-  const [books, setBooks] = useState([
-    {
-      id: "default",
-      title: "Default Dictionary",
-      desc: "从 dictionary 表随机抽取 dailyGoal 个词作为今日练习。",
-      tag: "Today",
-      to: "/study",
-    },
-    {
-      id: "cet4",
-      title: "CET-4 Core",
-      desc: "四六级常见核心词汇（示例）。",
-      tag: "Exam",
-      to: "/study",
-    },
-  ]);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [switching, setSwitching] = useState(null);
 
-  const [addOpen, setAddOpen] = useState(false);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/books`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(data?.error || "Failed to load books");
+        setBooks(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const choose = async (book) => {
+    try {
+      setSwitching(book.id);
+      const res = await fetch(`${API_BASE}/api/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: book.id }),
+      });
+      if (!res.ok) throw new Error("Failed to switch book");
+      onNavigate("/study");
+    } catch (err) {
+      setError(err.message);
+      setSwitching(null);
+    }
+  };
 
   return (
     <div className="page">
       <div className="container stack">
         <div className="page-head">
-          <h2>单词书选择 📚</h2>
-          <p className="text-muted">选择一个词书开始练习，也可以添加你自己的词典。</p >
+          <h2>词书</h2>
+          <p className="text-muted">
+            按难度选择一本词书，学习时的新词只从这本书里抽取。不熟悉的词不分词书，都会参与复习。
+          </p>
         </div>
 
-        <div className="books-grid">
-          {books.map((b) => (
-            <button
-              key={b.id}
-              className="book-card"
-              onClick={() => onNavigate(b.to)}
-              type="button"
-            >
-              <div className="book-card__top">
-                <span className="pill">{b.tag}</span>
-              </div>
+        {error ? <p className="error">{error}</p> : null}
 
-              <div className="book-card__body">
-                <h3 className="book-card__title">{b.title}</h3>
-                <p className="book-card__desc">{b.desc}</p >
-              </div>
+        {loading ? (
+          <div className="card state-card">
+            <div className="spinner" />
+            <p className="text-muted">正在加载词书…</p>
+          </div>
+        ) : (
+          <div className="books-grid">
+            {books.map((b) => {
+              const left = Math.max(0, b.total - b.seen);
+              const pct = b.total ? Math.round((b.seen / b.total) * 100) : 0;
+              return (
+                <button
+                  key={b.id || "all"}
+                  className={`book-card ${b.selected ? "is-selected" : ""}`}
+                  onClick={() => choose(b)}
+                  disabled={switching !== null}
+                  type="button"
+                >
+                  <div className="book-card__top">
+                    <h3 className="book-card__title">{b.title}</h3>
+                    {b.selected ? <span className="pill">当前</span> : null}
+                  </div>
+                  <p className="book-card__desc">{b.desc}</p>
 
-              <div className="book-card__bottom">
-                <span className="book-card__cta">进入 →</span>
-              </div>
-            </button>
-          ))}
-
-          <button
-            className="book-card book-card--add"
-            onClick={() => setAddOpen(true)}
-            type="button"
-          >
-            <div className="book-add">
-              <div className="book-add__plus">＋</div>
-              <div className="book-add__text">
-                <div className="book-add__title">添加词典</div>
-                <div className="book-add__desc">先做 UI，未来接数据库 / 上传</div>
-              </div>
-            </div>
-          </button>
-        </div>
+                  <div className="book-card__bottom">
+                    <div className="book-progress">
+                      <div className="book-progress__bar" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="book-card__meta text-small">
+                      <span>
+                        {b.seen} / {b.total} 已学
+                      </span>
+                      <span>剩 {left} 新词</span>
+                    </div>
+                    {b.tooEasy > 0 ? (
+                      <div className="text-small">其中 {b.tooEasy} 个标为太简单</div>
+                    ) : null}
+                    <span className="book-card__cta">
+                      {switching === b.id ? "切换中…" : b.selected ? "继续学习 →" : "学这本 →"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      <AddBookModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onCreate={(newBook) => setBooks((prev) => [newBook, ...prev])}
-      />
     </div>
   );
 }

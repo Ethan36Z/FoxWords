@@ -41,3 +41,6 @@ old_code/
 *.njsproj
 *.sln
 *.sw?
+
+# Downloaded dictionary sources (see docs/STARTUP.md)
+server/.dict-src/

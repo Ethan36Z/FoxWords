@@ -12,8 +12,9 @@ cp .env.deploy.example .env.deploy
 docker compose --env-file .env.deploy up -d --build
 ```
 
-`./data` is created by Docker on first start and holds `foxwords.db` and
-`settings.json`. It is intentionally ignored by Git. The model directory is
+`./data` is created by Docker on first start and holds `foxwords.db`, which
+stores the notebook, dictionary and settings. An older `settings.json` there is
+imported into the database once on first start. It is intentionally ignored by Git. The model directory is
 mounted read-only and this repository never downloads models.
 
 For a fixed llama.cpp version, set `LLAMA_IMAGE` to the desired image and tag

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "./apiBase";
+import SpeakButton from "./SpeakButton";
 
 function NotebookPage() {
   const PAGE_SIZE = 20;
@@ -8,13 +9,15 @@ function NotebookPage() {
   const [loading, setLoading] = useState(true);
 
   const [busyId, setBusyId] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [expanded, setExpanded] = useState(null); // id of the row showing details
 
-  // ✅ 分页状态
+  // Pagination
   const [offset, setOffset] = useState(0);
-  const [total, setTotal] = useState(null); // 后端给的总数
+  const [total, setTotal] = useState(null); // total count from the backend
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // 兼容分页版 {items,total}
+  // Accepts either a plain array or { items, total }
   const normalize = (data) => {
     const items = Array.isArray(data)
       ? data
@@ -25,7 +28,7 @@ function NotebookPage() {
     return { items, total: t };
   };
 
-  // ✅ 第一次加载（重置）
+  // Load (or reload) the first page
   async function loadFirstPage() {
     try {
       setLoading(true);
@@ -51,10 +54,9 @@ function NotebookPage() {
     }
   }
 
-  // ✅ Load more：在当前基础上追加
+  // Append the next page
   async function loadMore() {
     if (loadingMore) return;
-    // 如果 total 已知，且已经拉完了，就不拉
     if (typeof total === "number" && notebook.length >= total) return;
 
     try {
@@ -69,7 +71,7 @@ function NotebookPage() {
 
       const { items, total: t } = normalize(data);
 
-      // 追加（顺便去重一下，防止重复）
+      // Append, skipping anything already shown
       setNotebook((prev) => {
         const seen = new Set(prev.map((x) => x.id ?? x.word));
         const merged = [...prev];
@@ -115,7 +117,6 @@ function NotebookPage() {
 
       setNotebook((prev) => prev.filter((w) => w.id !== id));
 
-      // ✅ 如果 total 已知，删除后也更新 total
       if (typeof total === "number") setTotal((t) => Math.max(0, t - 1));
     } catch (err) {
       alert(err.message || "Delete failed");
@@ -125,65 +126,124 @@ function NotebookPage() {
   };
 
   const canLoadMore =
-    // total 不知道时：只要最近一次加载不是 0，就允许继续（但这里我们用 total 更稳）
     typeof total === "number"
       ? notebook.length < total
       : true;
 
+  const keyword = filter.trim().toLowerCase();
+  const shown = keyword
+    ? notebook.filter(
+        (w) => w.word.toLowerCase().includes(keyword) || (w.translation || "").includes(keyword)
+      )
+    : notebook;
+
   return (
     <div className="page">
-      <div className="container stack">
+      <div className="container stack nb-page">
         <div className="row row-between">
-          <h2 className="title">生词本 🗂️</h2>
+          <div className="page-head">
+            <h2>生词本</h2>
+            <p className="text-muted">
+              {typeof total === "number" ? `一共 ${total} 个生词` : "你标记过的所有生词"}
+            </p>
+          </div>
 
           <button className="btn btn-secondary btn-sm" onClick={loadFirstPage} disabled={loading}>
-            Refresh
+            刷新
           </button>
         </div>
 
-        <div className="card card--wide card--padded">
-          {loading ? (
-            <p className="text-muted">Loading...</p >
-          ) : notebook.length === 0 ? (
-            <p className="text-muted">还没有生词，去 Study 里标记几个吧～</p >
-          ) : (
-            <>
-              <div className="nb-grid">
-                {notebook.map((w) => (
-                  <div className="nb-item" key={w.id ?? w.word}>
-                    <button
-                      className="nb-del"
-                      onClick={() => handleDelete(w.id)}
-                      disabled={!w.id || busyId === w.id}
-                      title="删除"
-                    >
-                      {busyId === w.id ? "..." : "×"}
-                    </button>
+        {loading ? (
+          <div className="card state-card">
+            <div className="spinner" />
+            <p className="text-muted">正在加载生词本…</p>
+          </div>
+        ) : notebook.length === 0 ? (
+          <div className="card state-card">
+            <div className="state-card__icon">🗂️</div>
+            <div className="state-card__title">生词本还是空的</div>
+            <p className="text-muted">在“学习”页点星标，或在搜索里遇到不认识的词，就把它加进来吧。</p>
+          </div>
+        ) : (
+          <div className="card nb-list">
+            <div className="nb-list__toolbar">
+              <input
+                className="input"
+                placeholder="在生词本里查找（单词或中文）"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
 
-                    <div className="nb-word">{w.word}</div>
-                    <div className="nb-zh">{pickZh(w) || "（暂无释义）"}</div>
-                  </div>
-                ))}
+            <ul className="nb-rows">
+              {shown.map((w) => {
+                const open = expanded === w.id;
+                const firstLine = (pickZh(w) || "（暂无释义）").split("\n")[0];
+                return (
+                  <li key={w.id ?? w.word} className={`nb-row ${open ? "is-open" : ""}`}>
+                    <div className="nb-row__main">
+                      <button
+                        type="button"
+                        className="nb-row__toggle"
+                        onClick={() => setExpanded(open ? null : w.id)}
+                        aria-expanded={open}
+                      >
+                        <span className="nb-row__word">{w.word}</span>
+                        {w.phonetic ? <span className="phonetic">/{w.phonetic}/</span> : null}
+                        <span className="nb-row__zh">{firstLine}</span>
+                      </button>
+                      <SpeakButton text={w.word} size="sm" />
+                      <button
+                        className="icon-btn icon-btn--sm nb-row__del"
+                        onClick={() => handleDelete(w.id)}
+                        disabled={!w.id || busyId === w.id}
+                        title="删除"
+                        aria-label={`删除 ${w.word}`}
+                      >
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                          <path
+                            d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    {open ? (
+                      <div className="nb-row__detail">
+                        <div className="nb-zh">{pickZh(w) || "（暂无释义）"}</div>
+                        {w.definition ? <div className="nb-en">{w.definition}</div> : null}
+                        <div className="text-small">
+                          加入于 {new Date(w.createdAt).toLocaleDateString("zh-CN")}
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+              {shown.length === 0 ? (
+                <li className="nb-row nb-row--empty text-muted">没有匹配的生词。</li>
+              ) : null}
+            </ul>
+
+            <div className="row row-between nb-footer">
+              <div className="text-small">
+                {typeof total === "number"
+                  ? `已显示 ${notebook.length} / ${total}`
+                  : `已显示 ${notebook.length}`}
               </div>
 
-              <div className="row row-between nb-footer">
-                <div className="text-small">
-                  {typeof total === "number"
-                    ? `Showing ${notebook.length} / ${total}`
-                    : `Showing ${notebook.length}`}
-                </div>
-
-                <button
-                  className="btn btn-primary"
-                  onClick={loadMore}
-                  disabled={!canLoadMore || loadingMore}
-                >
-                  {loadingMore ? "Loading..." : canLoadMore ? "Load more" : "No more"}
+              {canLoadMore ? (
+                <button className="btn btn-secondary btn-sm" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "加载中…" : "加载更多"}
                 </button>
-              </div>
-            </>
-          )}
-        </div>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

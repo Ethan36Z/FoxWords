@@ -10,7 +10,6 @@ function StoryReviewPage() {
   const [generating, setGenerating] = useState(false);
   const [storyError, setStoryError] = useState(null);
 
-  // ✅ Copy states
   const [copyStatus, setCopyStatus] = useState("idle"); // idle | copied | error
   const [copyMsg, setCopyMsg] = useState("");
  // -------------------- 加载生词本 --------------------
@@ -37,10 +36,10 @@ function StoryReviewPage() {
     loadNotebook();
   }, []);
 
-  // ✅ 最新 10 个（后端是 ORDER BY id DESC）
+  // Latest 10 words (backend sorts by newest first)
   const latestNotebook = useMemo(() => notebook.slice(0, 10), [notebook]);
 
-  // ✅ 只显示：中文/释义（二选一）
+  // Show the Chinese translation, or the definition if there is none
   const pickZh = (w) => {
     const zh = (w?.translation || w?.definition || "").trim();
     return zh;
@@ -76,7 +75,7 @@ function StoryReviewPage() {
       setGenerating(false);
     }
   };
-// ✅ 复制故事到剪贴板
+  // Copy the story to the clipboard
   const handleCopyStory = async () => {
     const text = String(story || "").trim();
     if (!text) return;
@@ -103,7 +102,7 @@ function StoryReviewPage() {
       }
 
       setCopyStatus("copied");
-      setCopyMsg("已复制 ✅");
+      setCopyMsg("");
       window.setTimeout(() => {
         setCopyStatus("idle");
         setCopyMsg("");
@@ -124,8 +123,8 @@ function StoryReviewPage() {
       <div className="page">
         <div className="container">
           <div className="card card--medium card--padded">
-            <h2 className="title">Story Review 🦊</h2>
-            <p className="text-muted">Loading your notebook...</p >
+            <h2 className="title">故事复习</h2>
+            <p className="text-muted">正在加载生词本…</p>
           </div>
         </div>
       </div>
@@ -137,8 +136,8 @@ function StoryReviewPage() {
       <div className="page">
         <div className="container">
           <div className="card card--medium card--padded">
-            <h2 className="title">Story Review 🦊</h2>
-            <p className="text-danger">Failed to load notebook: {error}</p >
+            <h2 className="title">故事复习</h2>
+            <p className="text-danger">生词本加载失败：{error}</p>
           </div>
         </div>
       </div>
@@ -150,8 +149,8 @@ function StoryReviewPage() {
       <div className="page">
         <div className="container">
           <div className="card card--medium card--padded">
-            <h2 className="title">Story Review 🦊</h2>
-            <p className="text-muted">你还没有任何生词～先去 Study 页里标记几条吧。</p >
+            <h2 className="title">故事复习</h2>
+            <p className="text-muted">你还没有任何生词，先去“学习”页标记几个吧。</p>
           </div>
         </div>
       </div>
@@ -164,29 +163,31 @@ function StoryReviewPage() {
         <div className="card card--wide card--padded">
           <div className="stack">
             <div>
-              <h2 className="title">Story Review 🦊</h2>
+              <h2 className="title">故事复习</h2>
               <p className="text-muted">
                 仅使用你最近的 <b>10</b> 个生词生成故事。
-              </p >
+              </p>
             </div>
 
             <div className="card card--soft">
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <h3 style={{ margin: 0 }}>Latest 10 words</h3>
-                <span className="text-small">word · 中文/释义</span>
+                <h3 style={{ margin: 0, fontSize: 16 }}>最近的 10 个生词</h3>
+                <span className="text-small">单词 · 中文/释义</span>
               </div>
 
-              <div style={{ marginTop: 12 }} className="nb-grid">
+              <ul className="story-words">
                 {latestNotebook.map((item) => (
-                  <div className="nb-item" key={item.id ?? item.word}>
-                    <div className="nb-word">{item.word}</div>
-                    <div className="nb-zh">{pickZh(item) || "（暂无释义）"}</div>
-                  </div>
+                  <li key={item.id ?? item.word}>
+                    <span className="story-words__word">{item.word}</span>
+                    <span className="story-words__zh">
+                      {(pickZh(item) || "（暂无释义）").split("\n")[0]}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
 
-            {/* ✅ 生成 + 复制 */}
+            {/* Generate + copy */}
             <div className="row" style={{ justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <button
@@ -194,7 +195,7 @@ function StoryReviewPage() {
                   onClick={handleGenerateStory}
                   disabled={generating || latestNotebook.length === 0}
                 >
-                  {generating ? "正在酝酿故事..." : "用这 10 个词生成一个小故事"}
+                  {generating ? "正在酝酿故事…" : "用这 10 个词生成故事"}
                 </button>
 
                 <button
@@ -203,23 +204,23 @@ function StoryReviewPage() {
                   disabled={!story || generating}
                   title={!story ? "先生成故事再复制" : "复制到剪贴板"}
                 >
-                  {copyStatus === "copied" ? "已复制 ✅" : "复制故事 📋"}
+                  {copyStatus === "copied" ? "已复制" : "复制故事"}
                 </button>
 
                 {copyMsg ? <span className="text-small">{copyMsg}</span> : null}
               </div>
 
-              <span className="text-small">tips: 词越多越不稳定，所以这里强制用 10 个 🙂</span>
+              <span className="text-small">词太多时故事质量会下降，所以固定用 10 个。</span>
             </div>
 
             {storyError ? (
               <p className="text-danger" style={{ margin: 0 }}>
                 生成失败：{storyError}
-              </p >
+              </p>
             ) : null}
 
             {story ? (
-              <div className="card card--soft" style={{ whiteSpace: "pre-line" }}>
+              <div className="card card--soft story-text">
                 {story}
               </div>
             ) : null}

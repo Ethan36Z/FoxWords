@@ -2,22 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE } from "./apiBase";
+import SpeakButton from "./SpeakButton";
 
 function SearchOverlay({ open, onClose }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState([]);
+  const [searchedQ, setSearchedQ] = useState(""); // query the current results belong to
   const [picked, setPicked] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // ✅ 新增：加入生词本状态
   const [adding, setAdding] = useState(false);
   const [addMsg, setAddMsg] = useState(""); // 成功/失败提示
   const [notebookSet, setNotebookSet] = useState(() => new Set()); // 已加入的 word 集合
 
   const inputRef = useRef(null);
 
-  // 打开时聚焦 + 清空旧状态
+  // Reset state and focus the input each time the overlay opens
   useEffect(() => {
     if (open) {
       setErr(null);
@@ -25,18 +26,16 @@ function SearchOverlay({ open, onClose }) {
       setAddMsg("");
       setAdding(false);
 
-      // ✅ 打开时同步拉一次 notebook，避免重复加入
+      // Load the notebook so words already saved show as added
       (async () => {
         try {
           const res = await fetch(`${API_BASE}/api/notebook?limit=200&offset=0`);
           const data = await res.json().catch(() => ({}));
 
-          // 兼容：你后端现在返回 {items,total...}
           const list = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
           const s = new Set(list.map((w) => String(w.word || "").trim()).filter(Boolean));
           setNotebookSet(s);
         } catch {
-          // 拉不到也没关系，只是无法提前禁用按钮
           setNotebookSet(new Set());
         }
       })();
@@ -45,7 +44,7 @@ function SearchOverlay({ open, onClose }) {
     }
   }, [open]);
 
-  // Esc 关闭
+  // Esc closes the overlay
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
@@ -55,7 +54,7 @@ function SearchOverlay({ open, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // 防抖搜索
+  // Debounced search; aborts the previous request so late replies can't overwrite newer results
   useEffect(() => {
     if (!open) return;
     const keyword = q.trim();
@@ -66,6 +65,7 @@ function SearchOverlay({ open, onClose }) {
       return;
     }
 
+    const controller = new AbortController();
     const t = setTimeout(async () => {
       try {
         setLoading(true);
@@ -75,20 +75,28 @@ function SearchOverlay({ open, onClose }) {
           keyword
         )}&limit=8&offset=0`;
 
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || "Search failed");
 
-        setItems(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setItems(list);
+        setSearchedQ(keyword);
+        setPicked(list[0] || null);
+        setAddMsg("");
       } catch (e) {
+        if (e.name === "AbortError") return;
         setErr(String(e?.message || e));
         setItems([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }, 250);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [q, open]);
 
   const showEmpty = useMemo(
@@ -96,16 +104,14 @@ function SearchOverlay({ open, onClose }) {
     [open, q, picked]
   );
 
-  // ✅ 加入生词本
   const handleAddToNotebook = async () => {
     if (!picked || !picked.word) return;
 
     const w = String(picked.word).trim();
     if (!w) return;
 
-    // 已经加入过：直接提示
     if (notebookSet.has(w)) {
-      setAddMsg("已在生词本中 ✅");
+      setAddMsg("已在生词本中");
       return;
     }
 
@@ -133,18 +139,33 @@ function SearchOverlay({ open, onClose }) {
         throw new Error(msg);
       }
 
-      // ✅ 本地更新集合，立刻把按钮变成“已加入”
       setNotebookSet((prev) => {
         const next = new Set(prev);
         next.add(w);
         return next;
       });
 
-      setAddMsg("加入成功 ✅");
+      setAddMsg("已加入生词本");
     } catch (e) {
       setAddMsg(`加入失败：${String(e?.message || e)}`);
     } finally {
       setAdding(false);
+    }
+  };
+
+  // Up/Down moves through results, Enter adds the highlighted word
+  const onInputKeyDown = (e) => {
+    if (items.length === 0) return;
+    const i = items.findIndex((it) => it.word === picked?.word);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      const next = items[(Math.max(i, 0) + step + items.length) % items.length];
+      setPicked(next);
+      setAddMsg("");
+    } else if (e.key === "Enter" && picked) {
+      e.preventDefault();
+      handleAddToNotebook();
     }
   };
 
@@ -162,9 +183,9 @@ function SearchOverlay({ open, onClose }) {
         aria-modal="true"
       >
         <div className="so-header">
-          <div className="so-title">Search Dictionary</div>
-          <button className="btn btn-secondary btn-sm" onClick={onClose}>
-            Close
+          <div className="so-title">查词典</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+            关闭 <kbd className="kbd">Esc</kbd>
           </button>
         </div>
 
@@ -173,12 +194,13 @@ function SearchOverlay({ open, onClose }) {
           className="input so-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Type a word... (e.g. app)"
+          onKeyDown={onInputKeyDown}
+          placeholder="输入英文单词，例如 apple"
         />
 
         {showEmpty ? (
           <div className="text-muted so-tip">
-            输入关键词开始搜索。按 Esc 也可以关闭 🙂
+            输入单词开始搜索。↑ ↓ 选择，Enter 加入生词本。
           </div>
         ) : null}
 
@@ -187,11 +209,11 @@ function SearchOverlay({ open, onClose }) {
         <div className="so-body">
           <div className="so-list">
             <div className="so-list-title">
-              Results {loading ? "· searching..." : ""}
+              结果 {loading ? "· 搜索中…" : ""}
             </div>
 
-            {items.length === 0 && q.trim() && !loading ? (
-              <div className="text-muted so-empty">No results.</div>
+            {items.length === 0 && q.trim() && q.trim() === searchedQ && !loading ? (
+              <div className="text-muted so-empty">没有找到这个词。</div>
             ) : (
               items.map((it) => (
                 <button
@@ -201,7 +223,7 @@ function SearchOverlay({ open, onClose }) {
                   }`}
                   onClick={() => {
                     setPicked(it);
-                    setAddMsg(""); // ✅ 换预览时清空提示
+                    setAddMsg("");
                   }}
                 >
                   <div className="so-item-word">{it.word}</div>
@@ -214,15 +236,19 @@ function SearchOverlay({ open, onClose }) {
           </div>
 
           <div className="so-preview">
-            <div className="so-list-title">Preview</div>
+            <div className="so-list-title">详情</div>
 
             {!picked ? (
               <div className="text-muted so-empty">
-                Pick one result to preview.
+                选择左侧的一个结果查看详情。
               </div>
             ) : (
               <div className="card card--soft so-preview-card">
-                <div className="so-preview-word">{picked.word}</div>
+                <div className="so-preview-head">
+                  <div className="so-preview-word">{picked.word}</div>
+                  {picked.phonetic ? <span className="phonetic">/{picked.phonetic}/</span> : null}
+                  <SpeakButton text={picked.word} size="sm" />
+                </div>
 
                 <div className="so-preview-row">
                   <div className="so-preview-label">中文</div>
@@ -232,7 +258,7 @@ function SearchOverlay({ open, onClose }) {
                 </div>
 
                 <div className="so-preview-row">
-                  <div className="so-preview-label">English</div>
+                  <div className="so-preview-label">英文释义</div>
                   <div className="so-preview-value">
                     {(picked.definition || "").trim() || "（暂无）"}
                   </div>
@@ -240,23 +266,25 @@ function SearchOverlay({ open, onClose }) {
 
                 {picked.example ? (
                   <div className="so-preview-row">
-                    <div className="so-preview-label">Example</div>
-                    <div className="so-preview-value">{picked.example}</div>
+                    <div className="so-preview-label">例句</div>
+                    <div className="so-preview-value">
+                      {picked.example}
+                      {picked.exampleZh ? <div className="text-muted">{picked.exampleZh}</div> : null}
+                    </div>
                   </div>
                 ) : null}
 
-                {/* ✅ 新增：加入生词本按钮 */}
                 <div className="so-actions">
                   <button
                     className="btn btn-primary"
                     onClick={handleAddToNotebook}
                     disabled={adding || alreadyInNotebook}
                   >
-                    {alreadyInNotebook ? "已在生词本中" : adding ? "加入中..." : "加入生词本 ⭐"}
+                    {alreadyInNotebook ? "已在生词本中" : adding ? "加入中…" : "加入生词本"}
                   </button>
 
                   {addMsg ? (
-                    <span className={addMsg.startsWith("加入失败") ? "text-danger" : "text-muted"}>
+                    <span className={addMsg.startsWith("加入失败") ? "text-danger" : "text-success"}>
                       {addMsg}
                     </span>
                   ) : null}
@@ -264,10 +292,6 @@ function SearchOverlay({ open, onClose }) {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="so-footer text-small">
-          Tip: 这是“全局浮层”，不会打断 Study 进度。
         </div>
       </div>
     </div>

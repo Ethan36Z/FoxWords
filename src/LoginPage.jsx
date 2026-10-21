@@ -31,7 +31,7 @@ function LoginPage({ onLogin }) {
         throw new Error(data.error || "Login failed");
       }
 
-      // ✅ 只把结果交给 App，让 App 统一落盘 + 跳转
+      // App stores the login and handles the redirect
       if (onLogin) {
         onLogin({ email: data.email, token: data.token });
       }
@@ -44,17 +44,23 @@ function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="page page--center">
-      <div className="card card--narrow card--padded">
-        <h1 className="title">FoxWords 🦊</h1>
-        <p className="subtitle">Login to start your vocabulary journey.</p >
+    <div className="page page--center login-page">
+      <div className="card card--narrow card--padded login-card">
+        <div className="login-brand">
+          <span className="brand-mark" aria-hidden="true">🦊</span>
+          <h1 className="title" style={{ margin: 0 }}>FoxWords</h1>
+        </div>
+        <p className="subtitle">登录后开始你的单词之旅。</p>
 
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label">Email</label>
+            <label className="label" htmlFor="login-email">邮箱</label>
             <input
+              id="login-email"
               className="input"
               type="email"
+              autoComplete="username"
+              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -62,27 +68,28 @@ function LoginPage({ onLogin }) {
           </div>
 
           <div className="field">
-            <label className="label">Password</label>
+            <label className="label" htmlFor="login-password">密码</label>
             <input
+              id="login-password"
               className="input"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
           </div>
 
-          {error && <p className="error">{error}</p >}
+          {error && <p className="error">{error}</p>}
 
           <button type="submit" disabled={loading} className="btn btn-primary btn-block">
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "登录中…" : "登录"}
           </button>
         </form>
 
         <p className="hint">
-          Demo login · you can use <br />
-          <code>test@example.com / 123456</code>
-        </p >
+          演示账号：<code>test@example.com</code> / <code>123456</code>
+        </p>
       </div>
     </div>
   );

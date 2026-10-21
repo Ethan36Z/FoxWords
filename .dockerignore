@@ -13,3 +13,4 @@ data
 npm-debug.log*
 docs
 old_code
+server/.dict-src
