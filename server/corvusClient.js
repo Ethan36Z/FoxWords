@@ -24,7 +24,11 @@ class CorvusError extends Error {
   }
 }
 
-function normalizeBaseUrl(raw) {
+// HTTPS everywhere. Plain HTTP only to the loopback addresses themselves
+// (127.0.0.1, ::1), e.g. Corvus' own listener on this host; a host name such
+// as "localhost" depends on name resolution and is not trusted. Plain HTTP is
+// also refused when Node may route requests through a proxy.
+function normalizeBaseUrl(raw, env = process.env) {
   const value = String(raw || "").trim().replace(/\/+$/, "");
   if (!value) return "";
   let url;
@@ -33,9 +37,9 @@ function normalizeBaseUrl(raw) {
   } catch {
     return "";
   }
-  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  // The key must never travel over plain HTTP except to a local test server.
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) return "";
+  const loopback = ["127.0.0.1", "[::1]"].includes(url.hostname);
+  const proxied = /^(1|true)$/i.test(String(env.NODE_USE_ENV_PROXY || ""));
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback && !proxied)) return "";
   if (url.search || url.hash || url.username || url.password) return "";
   return value;
 }

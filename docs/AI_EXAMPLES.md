@@ -155,28 +155,44 @@ or 8 items is measured in the evaluation run.
 
 ## First real-model run (acceptance plan)
 
-1. **Preconditions.**
-   - A FoxWords key is provisioned on the Corvus side (operator).
-   - The two environment variables are set where the CLI runs.
-   - Run off-peak, so the shared model slot is free.
-2. **Smoke test.** Run `eval-b1` with `--max-requests 2`, then check `status`
-   and the log.
-3. **Comparison.** Run `eval-b1`, `eval-b4` and `eval-b8`: about 54 requests,
-   15 minutes plus model time.
-4. **Review.** Export the three review files. One reviewer scores every item
-   with the checklist. Technical figures come from the logs: invalid and
-   truncated share, latency, tokens per item.
-5. **Pass criteria.** For a batch size to pass:
-   - at least 90% of items in the 32 ordinary words are correct on both
-     meaning and translation;
+Staged: each stage needs its own approval.
+
+1. **Key (operator).**
+   - Create the FoxWords key with `aiExamples/ops/corvus_key.py`:
+     `create` as yourself, then `add --check` and `add` with sudo.
+   - The tool checks the allowlist exactly as Corvus does, backs it up,
+     never overwrites a key file or removes another key, and verifies the
+     result.
+   - Revoke with `remove`.
+2. **Endpoint.** On this host use `CORVUS_API_BASE_URL=http://127.0.0.1:18120/v1`.
+   - Plain HTTP is accepted only for the loopback addresses 127.0.0.1 and ::1,
+     and not when Node may use a proxy.
+   - Everything else needs HTTPS, and redirects are never followed.
+3. **Smoke test.** At most 2 requests:
+
+   ```bash
+   node aiExamples/cli.js run --job eval-common-b1 --batch 1 --max-requests 2 --confirm-real-calls
+   ```
+
+   Check it with `metrics` and the log. Stop and report.
+4. **Comparison (approved separately).**
+   - The common subset (16 words, `--eval common`) runs at batch sizes 1, 4
+     and 8: 16 + 4 + 2 requests, so quality and latency compare word for word.
+   - The 7 diagnostic words (`--eval diagnostic`) run once at batch size 1 and
+     are reported separately.
+   - 29 requests including the smoke test, plus retries.
+   - Evaluation jobs cannot be accepted (`accept` refuses them).
+5. **Review.** Export the review files and score every item with the
+   checklist. Latency, tokens per word and invalid share come from `metrics`.
+6. **Pass criteria for a batch size** (on the 16 common words):
+   - at least 90% correct on both meaning and translation;
    - 0 unsafe items;
    - at most 10% invalid or truncated;
-   - no duplicates;
-   - at least 5 of the 7 suspect-meaning words are flagged (by `meaning_ok`
-     or clearly mismatched), and none is accepted.
-6. **Batch size choice.** Pick the largest batch size that passes, with
-   quality within 5 points of batch 1.
-7. **Pilot.** Then run the 122-word pilot with that batch size, review all of
-   it, and accept.
-8. **Before users see examples:** fix the meanings the review flagged and
-   decide how the card shows AI examples.
+   - no duplicates.
+
+   Diagnostic words are judged on whether the problem is visible: flagged by
+   `meaning_ok`, or a sentence that shows the mismatch. They are never
+   accepted. `meaning_ok` is a hint, not a quality judgment.
+7. **Batch size.** Pick the largest batch size that passes, with quality within
+   5 points of batch 1.
+8. **Pilot.** The 122-word pilot needs its own approval.

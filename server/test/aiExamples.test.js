@@ -309,3 +309,15 @@ test("review and accept: decisions, edits, corrections and stale meanings", asyn
   const stale = applyReview(job, 3, file, "reviewer-c", { storeFile: store, dictionary: changed, replace: true });
   assert.match(stale.errors.join(), /apple: the dictionary meaning changed/);
 });
+
+test("evaluation jobs can never be accepted", async () => {
+  const { main } = require("../aiExamples/cli");
+  const name = `test-guard-${process.pid}`;
+  const dir = path.join(__dirname, "..", ".ai-work", "jobs", name);
+  Job.create(dir, { ...planOf(["apple"]), set: "eval-diagnostic", purpose: "evaluation" });
+  try {
+    await assert.rejects(main(["accept", "--job", name, "--reviewer", "x"]), /evaluation job/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

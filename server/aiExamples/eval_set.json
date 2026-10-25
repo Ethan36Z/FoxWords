@@ -167,5 +167,40 @@
    "word": "theatre",
    "category": "form"
   }
- ]
+ ],
+ "subsets": {
+  "common": {
+   "about": "Run at batch sizes 1, 4 and 8 on exactly these words, in this order, so quality and latency are directly comparable. Stratified over the ordinary categories; includes irregular forms (retell, swing), consonant doubling (nod) and a British spelling (behaviour). The first two words are the smoke test.",
+   "words": [
+    "bamboo",
+    "postcard",
+    "environment",
+    "competition",
+    "skill",
+    "fantastic",
+    "humorous",
+    "proper",
+    "especially",
+    "aloud",
+    "retell",
+    "swing",
+    "nod",
+    "whom",
+    "seventh",
+    "behaviour"
+   ]
+  },
+  "diagnostic": {
+   "about": "Words whose dictionary meaning is probably wrong. Run once at batch size 1 and report separately. Never accepted, whatever meaning_ok says.",
+   "words": [
+    "hotdog",
+    "airline",
+    "weekday",
+    "rubbish",
+    "hamburger",
+    "dumpling",
+    "clone"
+   ]
+  }
+ }
 }

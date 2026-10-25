@@ -64,6 +64,47 @@ function errorResponse(status, code, headers = {}) {
 
 const MSG = [{ role: "user", content: "Say hello." }];
 
+test("plain HTTP only to loopback addresses; everything else needs HTTPS", () => {
+  const ok = ["http://127.0.0.1:18120/v1", "http://[::1]:18120/v1", "http://127.1:18120/v1", "https://api-corvus.foxluma.com/v1"];
+  for (const u of ok) assert.ok(normalizeBaseUrl(u, {}), u);
+  const bad = [
+    "http://localhost:18120/v1", // name resolution is not trusted
+    "http://127.0.0.1.evil.com/v1",
+    "http://localhost.evil.com/v1",
+    "http://127.0.0.1@evil.com/v1",
+    "http://evil.com#@127.0.0.1/v1",
+    "http://0.0.0.0:18120/v1",
+    "http://10.0.0.5:18120/v1",
+    "http://api-corvus.foxluma.com/v1",
+    "ftp://127.0.0.1/v1",
+    "https://user:pass@api-corvus.foxluma.com/v1",
+  ];
+  for (const u of bad) assert.equal(normalizeBaseUrl(u, {}), "", u);
+  // a proxy could see the key: no plain HTTP then, HTTPS still fine
+  assert.equal(normalizeBaseUrl("http://127.0.0.1:18120/v1", { NODE_USE_ENV_PROXY: "1" }), "");
+  assert.ok(normalizeBaseUrl("https://api-corvus.foxluma.com/v1", { NODE_USE_ENV_PROXY: "1" }));
+});
+
+test("a redirect from the API is never followed", async () => {
+  const http = require("http");
+  const seen = [];
+  const target = http.createServer((req, res) => { seen.push(req.headers.authorization); res.end("{}"); });
+  await new Promise((r) => target.listen(0, "127.0.0.1", r));
+  const api = http.createServer((req, res) => {
+    res.writeHead(307, { Location: `http://127.0.0.1:${target.address().port}/steal` });
+    res.end();
+  });
+  await new Promise((r) => api.listen(0, "127.0.0.1", r));
+  const dir = tempDir();
+  const keyFile = path.join(dir, "key");
+  fs.writeFileSync(keyFile, makeKey());
+  const client = createCorvusClient({ baseUrl: `http://127.0.0.1:${api.address().port}/v1`, keyFile, log: () => {} });
+  await assert.rejects(client.chat({ messages: MSG }), { code: "ai_unavailable" });
+  assert.equal(seen.length, 0);
+  await new Promise((r) => api.close(r));
+  await new Promise((r) => target.close(r));
+});
+
 test("base URL must be https, except loopback", () => {
   assert.equal(normalizeBaseUrl("https://api-corvus.foxluma.com/v1/"), "https://api-corvus.foxluma.com/v1");
   assert.equal(normalizeBaseUrl("http://api-corvus.foxluma.com/v1"), "");

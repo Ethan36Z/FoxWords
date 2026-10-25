@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // AI example generation, offline and reviewed. Inside server/:
 //
-//   node aiExamples/cli.js plan   --job pilot-zk [--set zk-missing | --words a,b,c | --eval]
+//   node aiExamples/cli.js plan   --job pilot-zk [--set zk-missing | --words a,b,c | --eval [common|diagnostic]]
 //   node aiExamples/cli.js run    --job pilot-zk --batch 4 [--max-requests 10] --confirm-real-calls
 //   node aiExamples/cli.js status --job pilot-zk
+//   node aiExamples/cli.js metrics --job pilot-zk           (latency, tokens, results per request)
 //   node aiExamples/cli.js review --job pilot-zk            (writes review.tsv in the job folder)
 //   node aiExamples/cli.js accept --job pilot-zk --reviewer NAME [--review file] [--replace]
 //
@@ -50,16 +51,23 @@ async function main(argv) {
   if (cmd === "plan") {
     const dictionary = loadDictionary();
     const accepted = readStore().map((e) => e.word);
-    const words = a.eval
-      ? JSON.parse(fs.readFileSync(EVAL_FILE, "utf-8")).items.map((x) => x.word)
+    const evalSet = a.eval ? JSON.parse(fs.readFileSync(EVAL_FILE, "utf-8")) : null;
+    if (evalSet && a.eval !== true && !evalSet.subsets[a.eval]) throw new Error(`unknown evaluation subset ${a.eval}`);
+    const words = evalSet
+      ? a.eval === true
+        ? evalSet.items.map((x) => x.word)
+        : evalSet.subsets[a.eval].words
       : a.words
         ? String(a.words).split(",")
         : null;
     const { eligible, held } = selectWords(dictionary, accepted, { set: a.set || "zk-missing", words });
+    if (words) eligible.sort((x, y) => words.indexOf(x.word) - words.indexOf(y.word)); // keep the given order
     const job = Job.create(jobDir(a.job), {
       createdAt: new Date().toISOString(),
       promptVersion: PROMPT_VERSION,
-      set: a.eval ? "eval" : words ? "words" : a.set || "zk-missing",
+      set: a.eval ? (a.eval === true ? "eval" : `eval-${a.eval}`) : words ? "words" : a.set || "zk-missing",
+      // evaluation jobs measure the model; their output is never accepted
+      purpose: a.eval ? "evaluation" : "production",
       items: eligible.map(planItem),
       held,
     });
@@ -79,6 +87,43 @@ async function main(argv) {
     }
     const requests = job.events().filter((e) => e.type === "request").length;
     console.log(JSON.stringify({ words: st.size, requests, ...count }, null, 1));
+    return;
+  }
+
+  if (cmd === "metrics") {
+    const ev = job.events();
+    const req = new Map(ev.filter((e) => e.type === "request").map((e) => [e.id, e]));
+    const rows = ev
+      .filter((e) => e.type === "response")
+      .map((r) => {
+        const q = req.get(r.request);
+        const items = ev.filter((e) => e.type === "item" && e.request === r.request);
+        const count = (st) => items.filter((i) => i.status === st).length;
+        return {
+          request: r.request,
+          words: q ? q.words.length : 0,
+          seconds: q ? Math.round((Date.parse(r.at) - Date.parse(q.at)) / 100) / 10 : null,
+          ok: r.ok,
+          code: r.code || "",
+          finish: r.finishReason || "",
+          promptTokens: r.usage?.prompt_tokens ?? null,
+          completionTokens: r.usage?.completion_tokens ?? null,
+          candidate: count("candidate"),
+          needsReview: count("needs_review"),
+          invalid: count("invalid"),
+        };
+      });
+    console.table(rows);
+    const okRows = rows.filter((r) => r.ok);
+    const sum = (k) => okRows.reduce((t, r) => t + (r[k] || 0), 0);
+    const words = sum("words");
+    console.log(JSON.stringify({
+      requests: rows.length,
+      succeeded: okRows.length,
+      meanSeconds: okRows.length ? Math.round((sum("seconds") / okRows.length) * 10) / 10 : null,
+      completionTokensPerWord: words ? Math.round(sum("completionTokens") / words) : null,
+      results: { candidate: sum("candidate"), needs_review: sum("needsReview"), invalid: sum("invalid") },
+    }, null, 1));
     return;
   }
 
@@ -117,6 +162,9 @@ async function main(argv) {
   }
 
   if (cmd === "accept") {
+    if (job.plan.purpose === "evaluation" || String(job.plan.set || "").startsWith("eval")) {
+      throw new Error("this is an evaluation job; its examples are never accepted");
+    }
     const file = a.review || path.join(job.dir, "review.tsv");
     const out = applyReview(job, maxAttempts, file, a.reviewer, { replace: Boolean(a.replace), dictionary: loadDictionary() });
     job.lock();
