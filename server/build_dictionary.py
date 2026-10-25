@@ -6,10 +6,16 @@ Sources (not committed, see docs/STARTUP.md for download links):
   - Tatoeba cmn.txt      https://www.manythings.org/anki/cmn-eng.zip  (CC-BY 2.0 FR)
       human-translated English/Chinese sentence pairs, used as examples
 
+Also used (see docs/DICTIONARY.md):
+  - CMUdict cmudict.dict  https://github.com/cmusphinx/cmudict  (BSD-2-Clause)
+      General American pronunciation
+  - WordNet 3.0 index.sense  https://wordnet.princeton.edu/  (WordNet licence)
+      SemCor usage counts per part of speech, for the core meaning
+
 Usage:
   python3 -I build_dictionary.py <ecdict.csv> <cmn.txt | -> [output.json] [max_words]
       [--previous dictionary.json] [--overrides dictionary_overrides.json]
-      [--report dictionary.build.json]
+      [--report dictionary.build.json] [--cmudict cmudict.dict] [--wordnet index.sense]
 
   --previous   keep the example sentence of every word that already had one
                there, so a rebuild does not reshuffle examples learners know.
@@ -37,6 +43,12 @@ import json
 import os
 import re
 import sys
+from collections import Counter
+
+# python3 -I leaves the script's own folder off sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import meanings  # noqa: E402
+import pronunciation as pron  # noqa: E402
 
 # Exam tags from easiest to hardest, with the label shown in the app
 LEVELS = [
@@ -422,17 +434,9 @@ def sha256(path):
     return h.hexdigest()
 
 
-def apply_overrides(entries, rows, overrides, problems):
+def apply_translation_overrides(entries, rows, overrides, problems):
+    """Field fixes applied before core meanings are chosen."""
     by_word = {e["word"]: e for e in entries}
-    for fix in overrides.get("phonetic", []):
-        e = by_word.get(fix["word"])
-        if not e:
-            problems.append(f"phonetic override for missing word {fix['word']}")
-        elif e["phonetic"] != fix["from"]:
-            # The source changed since the fix was written: review by hand.
-            problems.append(f"phonetic override for {fix['word']} not applied: source is {e['phonetic']!r}")
-        else:
-            e["phonetic"] = fix["to"]
     for fix in overrides.get("translation_keep_lines", []):
         e = by_word.get(fix["word"])
         if not e:
@@ -443,13 +447,74 @@ def apply_overrides(entries, rows, overrides, problems):
             problems.append(f"translation override for {fix['word']} not applied: source changed")
             continue
         e["translation"] = "\n".join(src[i] for i in fix["keep"])
+    for fix in overrides.get("meaning", []):
+        e = by_word.get(fix["word"])
+        if not e:
+            problems.append(f"meaning override for missing word {fix['word']}")
+            continue
+        if fix.get("translation"):
+            if not fix.get("sources"):
+                problems.append(f"meaning override for {fix['word']} replaces the translation without sources")
+                continue
+            e["translation"] = "\n".join(fix["translation"])
+    for fix in overrides.get("phonetic", []):
+        e = by_word.get(fix["word"])
+        if not e:
+            problems.append(f"phonetic override for missing word {fix['word']}")
+        elif e["phoneticUk"] != fix["from"]:
+            # The source changed since the fix was written: review by hand.
+            problems.append(f"phonetic override for {fix['word']} not applied: source is {e['phoneticUk']!r}")
+        else:
+            e["phoneticUk"] = fix["to"]
     for o in overrides.get("include", []):
         if o["word"] not in by_word:
             problems.append(f"include override {o['word']} not in ECDICT")
 
 
+def meaning_override(fix, translation, problems):
+    """An override may only pick glosses that the entry already has, unless
+    it cites sources (and then replaced the translation above)."""
+    if not fix:
+        return None
+    if not fix.get("sources"):
+        missing = [g for g in fix.get("glosses", []) if g not in translation]
+        if missing:
+            problems.append(f"meaning override for {fix['word']} uses glosses not in its meanings: {missing}")
+            return None
+    return fix
+
+
+def pronunciation_override(fix, cmu, group, problems):
+    """Heteronyms whose vowel depends on the part of speech (live v./a.).
+    Values must be one of CMUdict's own variants."""
+    if not fix:
+        return None
+    if fix.get("ipa"):
+        # A correction of CMUdict itself must say what it is based on
+        if not fix.get("sources"):
+            problems.append(f"pronunciation override for {fix['word']} has an IPA value but no sources")
+            return None
+        return fix["ipa"]
+    allowed = {pron.to_ipa(v) for v in cmu.get(fix["word"].lower(), [])}
+    bad = [v for v in fix["by_group"].values() if v not in allowed]
+    if bad:
+        problems.append(f"pronunciation override for {fix['word']} not in CMUdict: {bad}")
+        return None
+    return fix["by_group"].get(group) or next(iter(fix["by_group"].values()))
+
+
+def load_tatoeba_pairs(path):
+    pairs = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) >= 2 and is_simplified(parts[1].strip()):
+                pairs.append((parts[0].strip(), parts[1].strip()))
+    return pairs
+
+
 def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=None,
-          overrides_path=None, report_path=None):
+          overrides_path=None, report_path=None, cmudict_path=None, wordnet_path=None):
     rows = load_rows(ecdict_path)
     overrides = {}
     if overrides_path and os.path.exists(overrides_path):
@@ -464,9 +529,8 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
         level_tag = min(tags, key=LEVEL_RANK.get) if tags else ""
         entries.append({
             "word": word,
-            "phonetic": normalize_ipa(row["phonetic"] or ""),
+            "phoneticUk": normalize_ipa(row["phonetic"] or ""),
             "translation": clean_translation(row, word),
-            "definition": clean_definition(row["definition"] or ""),
             "level": dict(LEVELS).get(level_tag, ""),
             "tags": " ".join(tags),
             "_reason": reason,
@@ -481,14 +545,51 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
         entries = entries[:max_words]
 
     problems = []
-    apply_overrides(entries, rows, overrides, problems)
+    apply_translation_overrides(entries, rows, overrides, problems)
+
+    use_tatoeba = bool(tatoeba_path and tatoeba_path != "-")
+    pairs = load_tatoeba_pairs(tatoeba_path) if use_tatoeba else []
+    tatoeba = meanings.TatoebaIndex(pairs, WORD_RE)
+    wn_counts = meanings.load_wordnet_counts(wordnet_path) if wordnet_path else {}
+    cmu = pron.load_cmudict(cmudict_path) if cmudict_path else {}
+    meaning_fixes = {o["word"]: o for o in overrides.get("meaning", [])}
+    pron_fixes = {o["word"]: o for o in overrides.get("pronunciation", [])}
+    labels = {o["word"]: o for o in overrides.get("labels", [])}
+
+    known = {e["word"].lower() for e in entries}
+    for e in entries:
+        word, row = e["word"], rows[e["word"]]
+        lines = e["translation"].split("\n")
+        fix = meaning_override(meaning_fixes.get(word), e["translation"], problems)
+        res = meanings.choose(word, lines, wn_counts, tatoeba.sentences(e["_forms"]), fix)
+        e["meaning"] = res["meaning"]
+        e["meaningSource"] = res["source"]
+        e["_group"] = res["group"]
+        e["_core_keys"] = {meanings.gloss_key(g) for g in res["meaning"].split(". ", 1)[-1].split(", ")}
+        # Core line first; the other lines keep ECDICT order
+        i = res["line_index"]
+        e["translation"] = "\n".join([lines[i]] + lines[:i] + lines[i + 1:])
+        defs = [ln for ln in split_lines(row["definition"] or "") if not ln.startswith("[")]
+        e["definition"] = "\n".join(meanings.order_definitions(defs, res["group"], MAX_DEFINITION_LINES))
+
+        ipa = pronunciation_override(pron_fixes.get(word), cmu, res["group"], problems)
+        source = "override" if ipa else ""
+        if not ipa and cmu:
+            ipa, source = pron.lookup(word, cmu, spelling_variants, res["group"], e["phoneticUk"], known)
+        if not ipa and e["phoneticUk"]:
+            ipa, source = e["phoneticUk"], "ecdict-uk"
+        e["phonetic"], e["phoneticSource"] = ipa, source
+        e["labels"] = " ".join(labels[word]["labels"]) if word in labels else ""
+    for w in labels:
+        if w not in {e["word"] for e in entries}:
+            problems.append(f"label override for missing word {w}")
 
     previous = {}
     if previous_path:
         with open(previous_path, encoding="utf-8") as f:
             previous = {e["word"]: e for e in json.load(f)}
 
-    sentences = load_sentences(tatoeba_path) if tatoeba_path and tatoeba_path != "-" else {}
+    sentences = load_sentences(tatoeba_path) if use_tatoeba else {}
     used = {}  # how often a sentence was already chosen, to spread examples out
     kept = 0
     for e in entries:
@@ -501,9 +602,12 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
         if e.get("example"):
             continue
         candidates = []
-        for form in e["_forms"]:
+        for form in sorted(e["_forms"]):  # sorted: set order differs between runs
             candidates.extend(sentences.get(form, [])[:20])
-        candidates.sort(key=lambda c: (used.get(c[1], 0), c[0]))
+        # Prefer a sentence whose translation uses the core meaning; the
+        # sentence text breaks ties so every rebuild picks the same one
+        candidates.sort(key=lambda c: (not any(k and k in c[2] for k in e["_core_keys"]),
+                                       used.get(c[1], 0), c[0], c[1]))
         if candidates:
             _, en, zh = candidates[0]
             used[en] = used.get(en, 0) + 1
@@ -511,10 +615,11 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
         else:
             e["example"], e["exampleZh"] = "", ""
 
-    reasons = {}
-    for e in entries:
-        reasons[e["_reason"]] = reasons.get(e["_reason"], 0) + 1
-    out = [{k: v for k, v in e.items() if not k.startswith("_")} for e in entries]
+    count = lambda key: dict(sorted(Counter(e[key] for e in entries).items(), key=lambda kv: -kv[1]))
+    reasons = count("_reason")
+    fields = ["word", "phonetic", "phoneticUk", "meaning", "translation", "definition", "level", "tags",
+              "labels", "example", "exampleZh", "meaningSource", "phoneticSource"]
+    out = [{k: e[k] for k in fields} for e in entries]
     out.sort(key=lambda w: (w["word"].lower(), w["word"]))
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
@@ -522,7 +627,9 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
     record = {
         "sources": {
             "ecdict_sha256": sha256(ecdict_path),
-            "tatoeba_sha256": sha256(tatoeba_path) if sentences else None,
+            "tatoeba_sha256": sha256(tatoeba_path) if use_tatoeba else None,
+            "cmudict_sha256": sha256(cmudict_path) if cmudict_path else None,
+            "wordnet_index_sense_sha256": sha256(wordnet_path) if wordnet_path else None,
             "previous_sha256": sha256(previous_path) if previous_path else None,
         },
         "overrides_version": overrides.get("version"),
@@ -531,7 +638,10 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
         "with_example": sum(1 for w in out if w["example"]),
         "examples_kept_from_previous": kept,
         "with_phonetic": sum(1 for w in out if w["phonetic"]),
-        "by_reason": dict(sorted(reasons.items())),
+        "by_reason": reasons,
+        "meaning_source": count("meaningSource"),
+        "phonetic_source": count("phoneticSource"),
+        "labelled": {w: labels[w]["labels"] for w in sorted(labels) if w in {e["word"] for e in entries}},
         "problems": problems,
     }
     if previous:
@@ -546,7 +656,7 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
 
 
 def main(argv):
-    flags = {"--previous": None, "--overrides": None, "--report": None}
+    flags = {"--previous": None, "--overrides": None, "--report": None, "--cmudict": None, "--wordnet": None}
     positional = []
     i = 0
     while i < len(argv):
@@ -565,10 +675,12 @@ def main(argv):
     overrides_path = flags["--overrides"] or os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                           "dictionary_overrides.json")
     record = build(ecdict_path, tatoeba_path, out_path, max_words, flags["--previous"],
-                   overrides_path, flags["--report"])
+                   overrides_path, flags["--report"], flags["--cmudict"], flags["--wordnet"])
     print(f"words: {record['words']}  with example: {record['with_example']} "
           f"(kept {record['examples_kept_from_previous']})  with phonetic: {record['with_phonetic']}")
     print("by reason:", record["by_reason"])
+    print("meaning source:", record["meaning_source"])
+    print("phonetic source:", record["phonetic_source"])
     if "added" in record:
         print(f"added {len(record['added'])}, removed {len(record['removed'])}: {record['removed']}")
     for p in record["problems"]:

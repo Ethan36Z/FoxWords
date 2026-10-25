@@ -36,6 +36,8 @@ test("frequent words that the old build dropped are present", () => {
     "a", "an", "I", "Monday", "January", "December", "English", "Chinese", "TV", "OK", "Mr", "internet",
     // modern/professional words with a checked ECDICT meaning
     "password", "smartphone", "algorithm", "benchmark",
+    // ECDICT meaning replaced by a verified one (Phase 3B)
+    "download", "upload", "online", "laptop", "startup", "stakeholder", "streaming", "roadmap", "deliverable",
   ];
   const missing = recovered.filter((w) => !byWord.has(w));
   assert.deepEqual(missing, []);
@@ -57,14 +59,67 @@ test("no part of speech is cut from a meaning", () => {
   assert.ok(byWord.get("still").translation.split("\n").some((l) => l.startsWith("adv.")));
   assert.ok(!byWord.get("crew").translation.includes("crow的过去式"));
   assert.equal(byWord.get("a").translation, "第一个字母 A; 一个; 第一的");
+  assert.ok(!byWord.get("download").translation.includes("卸载"));
 });
 
-test("phonetics use IPA characters only", () => {
-  const bad = dict.filter((e) => /[':,.^\\?@єεә]|ɒː/.test(e.phonetic));
-  assert.deepEqual(bad.map((e) => `${e.word} ${e.phonetic}`), []);
-  assert.equal(byWord.get("air").phonetic, "eə");
-  assert.equal(byWord.get("law").phonetic, "lɔː");
-  assert.equal(byWord.get("exactly").phonetic, "iɡˈzæktli");
+test("pronunciation: General American IPA with its source, British kept separately", () => {
+  const allowedSources = new Set(["cmudict", "cmudict-spelling", "cmudict-suffix", "cmudict-compound", "override", "ecdict-uk", ""]);
+  for (const e of dict) {
+    assert.ok(allowedSources.has(e.phoneticSource), `${e.word} source ${e.phoneticSource}`);
+    if (e.phoneticSource.startsWith("cmudict")) assert.match(e.phonetic, /^[a-zæɑɔəɚɝɛɪʊʌθðʃʒŋɡˈˌːʧ; -]+$/, e.word);
+  }
+  const bad = dict.filter((e) => /[':,.^\\?@\u0454\u03b5\u04d9]|ɒː/.test(e.phoneticUk));
+  assert.deepEqual(bad.map((e) => `${e.word} ${e.phoneticUk}`), []);
+  const expect = {
+    air: ["er", "eə"], law: ["lɔː", "lɔː"], exactly: ["ɪɡˈzæktli", "iɡˈzæktli"],
+    water: ["ˈwɔːtɚ"], abbreviation: ["əˌbriːviˈeɪʃən"], realization: ["ˌriːləˈzeɪʃən"],
+    // heteronyms follow the core part of speech
+    live: ["lɪv"], record: ["ˈrekɚd"], use: ["juːz"], unite: ["juˈnaɪt"],
+  };
+  for (const [w, [us, uk]] of Object.entries(expect)) {
+    assert.equal(byWord.get(w).phonetic, us, w);
+    if (uk) assert.equal(byWord.get(w).phoneticUk, uk, w);
+  }
+  assert.ok(dict.filter((e) => !e.phonetic).length <= 15);
+});
+
+test("core meanings: a reviewed gold set", () => {
+  // The first meaning a learner sees; checked by hand against common usage.
+  const gold = {
+    still: "adv. 仍然", quiet: "a. 安静的", small: "a. 小的", like: "vt. 喜欢", drop: "vi. 放下",
+    ride: "vt. 骑", husband: "n. 丈夫", queue: "n. 队列", formula: "n. 公式", envisage: "vt. 想象",
+    stunning: "a. 令人震惊的", subside: "vi. 平息", molest: "vt. 调戏", please: "adv. 请",
+    within: "prep. 在...之内", in: "prep. 在...之内", stable: "a. 稳定的", meet: "vt. 遇见",
+    many: "a. 许多的", will: "aux. 将", may: "aux. 可以", one: "n. 一(个)", stay: "vi. 停留",
+    issue: "n. 发行", empty: "a. 空的", law: "n. 法律", winter: "n. 冬季", come: "vi. 来",
+    download: "v. 下载", stakeholder: "n. 利益相关者", a: "art. 一个",
+  };
+  const wrong = Object.entries(gold).filter(([w, m]) => !byWord.get(w).meaning.startsWith(m));
+  assert.deepEqual(wrong.map(([w, m]) => `${w}: expected ${m}, got ${byWord.get(w).meaning}`), []);
+  // Every entry has a core meaning that comes from its own meanings
+  for (const e of dict) {
+    assert.ok(e.meaning, `${e.word} has no core meaning`);
+    const glosses = e.meaning.replace(/^[a-z]+\. /, "").split(", ");
+    assert.ok(glosses.every((g) => e.translation.includes(g)), `${e.word}: ${e.meaning}`);
+    assert.ok(e.meaningSource, e.word);
+  }
+});
+
+test("translations keep every ECDICT line, core line first", () => {
+  for (const e of dict) {
+    const label = e.meaning.match(/^([a-z]+)\./)?.[1];
+    // ("a": ECDICT's only line has no label; the override adds art.)
+    if (label && /^[a-z]+\./.test(e.translation)) assert.ok(e.translation.startsWith(label + "."), `${e.word}: ${e.meaning} / ${e.translation.split("\n")[0]}`);
+  }
+  assert.ok(byWord.get("still").translation.split("\n").some((l) => l.startsWith("n. 蒸馏室")));
+});
+
+test("usage labels instead of removal", () => {
+  for (const w of ["fuck", "shit", "bitch", "bastard"]) assert.ok(byWord.get(w).labels.split(" ").includes("vulgar"), w);
+  assert.deepEqual(byWord.get("negro").labels, "offensive");
+  assert.deepEqual(byWord.get("ass").labels, "offensive-sense");
+  assert.deepEqual(byWord.get("damn").labels, "mild");
+  assert.equal(byWord.get("apple").labels, "");
 });
 
 test("entries are unique, complete, and levels match their tags", () => {
@@ -109,8 +164,13 @@ test("upgrading a database keeps ids, progress and notebook", () => {
 
   // Stored rows match the file (the importer does not alter them)
   for (const w of ["number", "like", "I", "air", "Monday"]) {
-    const row = db.prepare("SELECT phonetic, translation, example, level, tags FROM dictionary WHERE word = ?").get(w);
+    const row = db
+      .prepare("SELECT phonetic, phoneticUk, meaning, translation, example, level, tags, labels FROM dictionary WHERE word = ?")
+      .get(w);
     const e = byWord.get(w);
-    assert.deepEqual(row, { phonetic: e.phonetic, translation: e.translation, example: e.example, level: e.level, tags: e.tags });
+    assert.deepEqual(row, {
+      phonetic: e.phonetic, phoneticUk: e.phoneticUk, meaning: e.meaning, translation: e.translation,
+      example: e.example, level: e.level, tags: e.tags, labels: e.labels,
+    });
   }
 });

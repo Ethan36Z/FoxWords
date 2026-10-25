@@ -105,18 +105,18 @@ test("dictionary import: cleans text and fake examples", () => {
 
 test("settings: defaults, save, clamp, partial update", async () => {
   const initial = await api("GET", "/api/settings");
-  assert.deepEqual(initial.body, { exampleFirst: true, dailyGoal: 20, studyMix: "mixed", book: "" });
+  assert.deepEqual(initial.body, { exampleFirst: true, dailyGoal: 20, studyMix: "mixed", book: "", includeSensitive: false });
 
-  await api("PUT", "/api/settings", { exampleFirst: false, dailyGoal: 9999, studyMix: "review", book: "zk" });
+  await api("PUT", "/api/settings", { exampleFirst: false, dailyGoal: 9999, studyMix: "review", book: "zk", includeSensitive: true });
   const saved = await api("GET", "/api/settings");
-  assert.deepEqual(saved.body, { exampleFirst: false, dailyGoal: 500, studyMix: "review", book: "zk" });
+  assert.deepEqual(saved.body, { exampleFirst: false, dailyGoal: 500, studyMix: "review", book: "zk", includeSensitive: true });
 
   // Only changing dailyGoal keeps the rest; unknown values are ignored
-  await api("PUT", "/api/settings", { dailyGoal: 5, studyMix: "bogus", book: "klingon" });
+  await api("PUT", "/api/settings", { dailyGoal: 5, studyMix: "bogus", book: "klingon", includeSensitive: "yes" });
   const partial = await api("GET", "/api/settings");
-  assert.deepEqual(partial.body, { exampleFirst: false, dailyGoal: 5, studyMix: "review", book: "zk" });
+  assert.deepEqual(partial.body, { exampleFirst: false, dailyGoal: 5, studyMix: "review", book: "zk", includeSensitive: true });
 
-  await api("PUT", "/api/settings", { book: "" });
+  await api("PUT", "/api/settings", { book: "", includeSensitive: false });
 });
 
 test("dictionary: prefix matches come first", async () => {

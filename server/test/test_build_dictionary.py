@@ -187,5 +187,39 @@ class BuildTests(unittest.TestCase):
             self.assertIn("apple", rec["problems"][0])
 
 
+class ReproducibilityTests(unittest.TestCase):
+    def test_same_output_with_different_hash_seeds(self):
+        """Python randomises set order per process; the build must not depend on it."""
+        import csv
+        import hashlib
+        import subprocess
+        with tempfile.TemporaryDirectory() as d:
+            fields = ["word", "phonetic", "definition", "translation", "pos", "collins", "oxford", "tag",
+                      "bnc", "frq", "exchange", "detail", "audio"]
+            with open(os.path.join(d, "ecdict.csv"), "w", encoding="utf-8", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=fields)
+                w.writeheader()
+                w.writerow({"word": "run", "translation": "vi. 跑\\nn. 跑步", "tag": "zk",
+                            "exchange": "p:ran/d:run/i:running/3:runs/s:runs"})
+                w.writerow({"word": "walk", "translation": "vi. 走", "tag": "zk", "exchange": "3:walks/i:walking"})
+            with open(os.path.join(d, "cmn.txt"), "w", encoding="utf-8") as f:
+                # equally good sentences for different forms: a tie to break
+                f.write("He runs to school every day.\t他每天跑步去学校。\n")
+                f.write("They ran to school every day.\t他们每天跑去学校。\n")
+                f.write("I am running to school today.\t我今天跑去学校。\n")
+                f.write("She walks to school every day.\t她每天走路去学校。\n")
+                f.write("We are walking to school today.\t我们今天走路去学校。\n")
+            script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build_dictionary.py")
+            digests = set()
+            for seed in ("1", "2", "3"):
+                out = os.path.join(d, f"out{seed}.json")
+                subprocess.run([sys.executable, "-I", "-B", script, os.path.join(d, "ecdict.csv"),
+                                os.path.join(d, "cmn.txt"), out, "--overrides", os.path.join(d, "none.json")],
+                               check=True, capture_output=True, env={"PYTHONHASHSEED": seed})
+                with open(out, "rb") as f:
+                    digests.add(hashlib.sha256(f.read()).hexdigest())
+            self.assertEqual(len(digests), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

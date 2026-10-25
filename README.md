@@ -67,3 +67,7 @@ See [docs/STARTUP.md](docs/STARTUP.md) for local development details and the Hom
 
 - Dictionary: [ECDICT](https://github.com/skywind3000/ECDICT) by skywind3000, MIT License.
 - Example sentences: [Tatoeba](https://tatoeba.org), CC-BY 2.0 FR, via [manythings.org](https://www.manythings.org/anki/).
+- American pronunciation: [CMU Pronouncing Dictionary](https://github.com/cmusphinx/cmudict), BSD-2-Clause.
+- Part-of-speech usage counts: [WordNet 3.0](https://wordnet.princeton.edu/), Princeton University, WordNet licence.
+
+Licence notices and how each source is used: [NOTICE.md](NOTICE.md) and [docs/DICTIONARY.md](docs/DICTIONARY.md).

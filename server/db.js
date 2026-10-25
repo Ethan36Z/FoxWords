@@ -66,10 +66,18 @@ function ensureColumn(table, column, definition) {
 ensureColumn("notebook", "translation", "TEXT DEFAULT ''");
 ensureColumn("dictionary", "phonetic", "TEXT DEFAULT ''");
 ensureColumn("dictionary", "exampleZh", "TEXT DEFAULT ''");
+// Core meaning for the card (one part of speech, 1-3 glosses), chosen by the build
+ensureColumn("dictionary", "meaning", "TEXT DEFAULT ''");
+// British transcription from ECDICT; "phonetic" holds General American IPA
+ensureColumn("dictionary", "phoneticUk", "TEXT DEFAULT ''");
+// Usage labels, space-separated: vulgar, offensive, offensive-sense, mild, informal
+ensureColumn("dictionary", "labels", "TEXT DEFAULT ''");
 // Which words a study batch draws from: 'new' | 'mixed' | 'review'
 ensureColumn("settings", "studyMix", "TEXT NOT NULL DEFAULT 'mixed'");
 // Word book (exam tag such as 'cet4') new words come from; '' = all words
 ensureColumn("settings", "book", "TEXT NOT NULL DEFAULT ''");
+// 1 = words labelled vulgar/offensive may appear among new study words
+ensureColumn("settings", "includeSensitive", "INTEGER NOT NULL DEFAULT 0");
 // 1 when the learner marked the word "太简单"; it then never shows up again
 ensureColumn("word_stats", "tooEasy", "INTEGER NOT NULL DEFAULT 0");
 

@@ -1,97 +1,1044 @@
 {
-  "version": 1,
-  "notes": "Manual corrections applied by build_dictionary.py after its rules. Every entry gives a reason. Meanings always come from ECDICT; nothing here is newly written. A fix with a 'from' or 'source_lines' value is only applied while the source still matches, so upstream changes are reviewed instead of overwritten.",
+  "version": 2,
+  "notes": "Manual corrections applied by build_dictionary.py after its rules. Every entry gives a reason. Meaning overrides either reorder glosses that ECDICT already has, or cite at least two independent sources when they replace a wrong ECDICT meaning. A fix with a 'from' or 'source_lines' value is only applied while the source still matches, so upstream changes are reviewed instead of overwritten.",
   "include": [
-    { "word": "a", "reason": "Most frequent word; skipped by the two-letter minimum." },
-    { "word": "an", "reason": "Indefinite article; no exam tag or frequency rank in ECDICT." },
-    { "word": "I", "reason": "Capitalised pronoun; capitalised words are not picked by the rules." },
-    { "word": "Mr", "reason": "Common title (Oxford core, Collins 5)." },
-    { "word": "Mrs", "reason": "Common title (Oxford core, Collins 5)." },
-    { "word": "Dr", "reason": "Common title (Oxford core, 高考 tag)." },
-    { "word": "TV", "reason": "Everyday word (Oxford core, Collins 4, exam tags)." },
-    { "word": "OK", "reason": "Everyday word (Oxford core, exam tags)." },
-    { "word": "Monday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Tuesday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Wednesday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Thursday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Friday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Saturday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "Sunday", "reason": "Day name (Oxford core, exam tags)." },
-    { "word": "January", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "February", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "April", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "June", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "July", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "September", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "October", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "November", "reason": "Month name (Oxford core, exam tags)." },
-    { "word": "December", "reason": "Month name (Oxford core, exam tags). March, May and August are already in the dictionary as march, may and august, which include the month meaning." },
-    { "word": "Christmas", "reason": "Common holiday (Collins 4, exam tags)." },
-    { "word": "English", "reason": "Language/nationality word (COCA rank 1782, exam tags)." },
-    { "word": "Chinese", "reason": "Language/nationality word (COCA rank 1218, exam tags)." },
-    { "word": "American", "reason": "Nationality word (COCA rank 176, exam tags)." },
-    { "word": "British", "reason": "Nationality word (COCA rank 1183, exam tags)." },
-    { "word": "French", "reason": "Language/nationality word (COCA rank 1362, exam tags)." },
-    { "word": "German", "reason": "Language/nationality word (COCA rank 1823, exam tags)." },
-    { "word": "Japanese", "reason": "Language/nationality word (COCA rank 1718, exam tags)." },
-    { "word": "Spanish", "reason": "Language/nationality word (COCA rank 2204, exam tags)." },
-    { "word": "Russian", "reason": "Language/nationality word (COCA rank 1562, exam tags)." },
-    { "word": "Italian", "reason": "Language/nationality word (COCA rank 2637, exam tags)." },
-    { "word": "Korean", "reason": "Language/nationality word (COCA rank 3522)." },
-    { "word": "Indian", "reason": "Nationality word (COCA rank 1436, exam tags)." },
-    { "word": "Canadian", "reason": "Nationality word (COCA rank 2638, exam tags)." },
-    { "word": "Australian", "reason": "Nationality word (COCA rank 5172, exam tags)." },
-    { "word": "European", "reason": "Nationality word (COCA rank 1263, exam tags)." },
-    { "word": "African", "reason": "Nationality word (COCA rank 1203, exam tags)." },
-    { "word": "Asian", "reason": "Nationality word (COCA rank 2351, exam tags)." },
-    { "word": "password", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 密码, 口令." },
-    { "word": "smartphone", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 智能手机." },
-    { "word": "selfie", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 自拍照." },
-    { "word": "emoji", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 表情符号." },
-    { "word": "podcast", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 播客." },
-    { "word": "playlist", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 播放列表." },
-    { "word": "hashtag", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked." },
-    { "word": "screenshot", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 屏幕截图." },
-    { "word": "username", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked." },
-    { "word": "charger", "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 充电器." },
-    { "word": "algorithm", "reason": "Professional/tech word (Phase 2 probe, COCA rank 8230); ECDICT meaning checked: 算法." },
-    { "word": "bandwidth", "reason": "Professional/tech word (Phase 2 probe); ECDICT meaning checked: 带宽." },
-    { "word": "encryption", "reason": "Professional/tech word (Phase 2 probe); ECDICT meaning checked: 加密." },
-    { "word": "benchmark", "reason": "Professional word (Phase 2 probe, COCA rank 8070); ECDICT meaning checked: 基准." },
-    { "word": "brainstorm", "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 集体讨论." },
-    { "word": "outsource", "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 外包." },
-    { "word": "procurement", "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 采购." },
-    { "word": "workflow", "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 工作流程." },
-    { "word": "sitcom", "reason": "COCA top 10,000 word that ECDICT labels abbr.; meaning checked: 情景喜剧." }
+    {
+      "word": "a",
+      "reason": "Most frequent word; skipped by the two-letter minimum."
+    },
+    {
+      "word": "an",
+      "reason": "Indefinite article; no exam tag or frequency rank in ECDICT."
+    },
+    {
+      "word": "I",
+      "reason": "Capitalised pronoun; capitalised words are not picked by the rules."
+    },
+    {
+      "word": "Mr",
+      "reason": "Common title (Oxford core, Collins 5)."
+    },
+    {
+      "word": "Mrs",
+      "reason": "Common title (Oxford core, Collins 5)."
+    },
+    {
+      "word": "Dr",
+      "reason": "Common title (Oxford core, 高考 tag)."
+    },
+    {
+      "word": "TV",
+      "reason": "Everyday word (Oxford core, Collins 4, exam tags)."
+    },
+    {
+      "word": "OK",
+      "reason": "Everyday word (Oxford core, exam tags)."
+    },
+    {
+      "word": "Monday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Tuesday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Wednesday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Thursday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Friday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Saturday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "Sunday",
+      "reason": "Day name (Oxford core, exam tags)."
+    },
+    {
+      "word": "January",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "February",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "April",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "June",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "July",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "September",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "October",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "November",
+      "reason": "Month name (Oxford core, exam tags)."
+    },
+    {
+      "word": "December",
+      "reason": "Month name (Oxford core, exam tags). March, May and August are already in the dictionary as march, may and august, which include the month meaning."
+    },
+    {
+      "word": "Christmas",
+      "reason": "Common holiday (Collins 4, exam tags)."
+    },
+    {
+      "word": "English",
+      "reason": "Language/nationality word (COCA rank 1782, exam tags)."
+    },
+    {
+      "word": "Chinese",
+      "reason": "Language/nationality word (COCA rank 1218, exam tags)."
+    },
+    {
+      "word": "American",
+      "reason": "Nationality word (COCA rank 176, exam tags)."
+    },
+    {
+      "word": "British",
+      "reason": "Nationality word (COCA rank 1183, exam tags)."
+    },
+    {
+      "word": "French",
+      "reason": "Language/nationality word (COCA rank 1362, exam tags)."
+    },
+    {
+      "word": "German",
+      "reason": "Language/nationality word (COCA rank 1823, exam tags)."
+    },
+    {
+      "word": "Japanese",
+      "reason": "Language/nationality word (COCA rank 1718, exam tags)."
+    },
+    {
+      "word": "Spanish",
+      "reason": "Language/nationality word (COCA rank 2204, exam tags)."
+    },
+    {
+      "word": "Russian",
+      "reason": "Language/nationality word (COCA rank 1562, exam tags)."
+    },
+    {
+      "word": "Italian",
+      "reason": "Language/nationality word (COCA rank 2637, exam tags)."
+    },
+    {
+      "word": "Korean",
+      "reason": "Language/nationality word (COCA rank 3522)."
+    },
+    {
+      "word": "Indian",
+      "reason": "Nationality word (COCA rank 1436, exam tags)."
+    },
+    {
+      "word": "Canadian",
+      "reason": "Nationality word (COCA rank 2638, exam tags)."
+    },
+    {
+      "word": "Australian",
+      "reason": "Nationality word (COCA rank 5172, exam tags)."
+    },
+    {
+      "word": "European",
+      "reason": "Nationality word (COCA rank 1263, exam tags)."
+    },
+    {
+      "word": "African",
+      "reason": "Nationality word (COCA rank 1203, exam tags)."
+    },
+    {
+      "word": "Asian",
+      "reason": "Nationality word (COCA rank 2351, exam tags)."
+    },
+    {
+      "word": "password",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 密码, 口令."
+    },
+    {
+      "word": "smartphone",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 智能手机."
+    },
+    {
+      "word": "selfie",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 自拍照."
+    },
+    {
+      "word": "emoji",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 表情符号."
+    },
+    {
+      "word": "podcast",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 播客."
+    },
+    {
+      "word": "playlist",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 播放列表."
+    },
+    {
+      "word": "hashtag",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked."
+    },
+    {
+      "word": "screenshot",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 屏幕截图."
+    },
+    {
+      "word": "username",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked."
+    },
+    {
+      "word": "charger",
+      "reason": "Modern everyday word (Phase 2 probe); ECDICT meaning checked: 充电器."
+    },
+    {
+      "word": "algorithm",
+      "reason": "Professional/tech word (Phase 2 probe, COCA rank 8230); ECDICT meaning checked: 算法."
+    },
+    {
+      "word": "bandwidth",
+      "reason": "Professional/tech word (Phase 2 probe); ECDICT meaning checked: 带宽."
+    },
+    {
+      "word": "encryption",
+      "reason": "Professional/tech word (Phase 2 probe); ECDICT meaning checked: 加密."
+    },
+    {
+      "word": "benchmark",
+      "reason": "Professional word (Phase 2 probe, COCA rank 8070); ECDICT meaning checked: 基准."
+    },
+    {
+      "word": "brainstorm",
+      "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 集体讨论."
+    },
+    {
+      "word": "outsource",
+      "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 外包."
+    },
+    {
+      "word": "procurement",
+      "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 采购."
+    },
+    {
+      "word": "workflow",
+      "reason": "Professional word (Phase 2 probe); ECDICT meaning checked: 工作流程."
+    },
+    {
+      "word": "sitcom",
+      "reason": "COCA top 10,000 word that ECDICT labels abbr.; meaning checked: 情景喜剧."
+    },
+    {
+      "word": "download",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "upload",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "online",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "laptop",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "streaming",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "startup",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "roadmap",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "stakeholder",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "deliverable",
+      "reason": "Previously blocked for a wrong ECDICT meaning; now has a verified meaning override."
+    },
+    {
+      "word": "fuck",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    },
+    {
+      "word": "fucking",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    },
+    {
+      "word": "shit",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    },
+    {
+      "word": "piss",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    },
+    {
+      "word": "bitch",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    },
+    {
+      "word": "bastard",
+      "reason": "Common English word; labelled instead of removed (see labels)."
+    }
   ],
   "exclude": [
-    { "word": "reservior", "reason": "Misspelling of reservoir, which is already in the dictionary.", "kind": "spelling" },
-    { "word": "uptodate", "reason": "Non-standard spelling of up-to-date (hyphenated words are not supported yet).", "kind": "spelling" },
-    { "word": "tion", "reason": "Word fragment; its ECDICT meaning is unrelated noise.", "kind": "data" },
-    { "word": "download", "reason": "ECDICT meaning is wrong (卸载 means uninstall, 下栽 is a typo); needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "upload", "reason": "ECDICT meaning (上装, 加载) is outdated; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "online", "reason": "ECDICT only has the old computing sense (联机); needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "laptop", "reason": "ECDICT only has an adjective (膝上型的); needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "streaming", "reason": "ECDICT meaning ([电] 流) does not cover the media sense; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "startup", "reason": "ECDICT only has the computing sense (启动), not the company sense; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "roadmap", "reason": "ECDICT meaning (路标) misses the planning sense; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "stakeholder", "reason": "ECDICT meaning (赌金保管者) is archaic; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "scalable", "reason": "ECDICT meaning (可攀登的) misses the technical sense; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "deliverable", "reason": "ECDICT meaning misses the project-management sense; needs a verified source.", "kind": "needs_verified_meaning" },
-    { "word": "fuck", "reason": "Strong profanity; kept out of the default study deck (product decision).", "kind": "content" },
-    { "word": "fucking", "reason": "Strong profanity; kept out of the default study deck (product decision).", "kind": "content" },
-    { "word": "shit", "reason": "Strong profanity; kept out of the default study deck (product decision).", "kind": "content" },
-    { "word": "piss", "reason": "Vulgar; kept out of the default study deck (product decision).", "kind": "content" },
-    { "word": "bitch", "reason": "Offensive in its common use; kept out of the default study deck (product decision).", "kind": "content" },
-    { "word": "bastard", "reason": "Offensive in its common use; kept out of the default study deck (product decision).", "kind": "content" }
+    {
+      "word": "reservior",
+      "reason": "Misspelling of reservoir, which is already in the dictionary.",
+      "kind": "spelling"
+    },
+    {
+      "word": "uptodate",
+      "reason": "Non-standard spelling of up-to-date (hyphenated words are not supported yet).",
+      "kind": "spelling"
+    },
+    {
+      "word": "tion",
+      "reason": "Word fragment; its ECDICT meaning is unrelated noise.",
+      "kind": "data"
+    },
+    {
+      "word": "scalable",
+      "reason": "ECDICT meaning (可攀登的) misses the technical sense; only one source (Youdao: 可扩展的) confirms it so far.",
+      "kind": "needs_verified_meaning"
+    }
   ],
   "translation_keep_lines": [
     {
       "word": "a",
       "reason": "The second ECDICT line is a list of computing abbreviations (累加器, 加法器 ...), not meanings of the article.",
-      "source_lines": ["第一个字母 A; 一个; 第一的", "art. [计] 累加器, 加法器, 地址, 振幅, 模拟, 区域, 面积, 汇编, 组件, 异步"],
-      "keep": [0]
+      "source_lines": [
+        "第一个字母 A; 一个; 第一的",
+        "art. [计] 累加器, 加法器, 地址, 振幅, 模拟, 区域, 面积, 汇编, 组件, 异步"
+      ],
+      "keep": [
+        0
+      ]
     }
   ],
-  "phonetic": []
+  "phonetic": [],
+  "meaning": [
+    {
+      "word": "download",
+      "translation": [
+        "v. 下载",
+        "n. 下载"
+      ],
+      "glosses": [
+        "下载"
+      ],
+      "group": "v",
+      "sources": [
+        "https://en.wiktionary.org/wiki/download (Translations: 下载)",
+        "Tatoeba cmn-eng: 'you can download it now' -> 下载"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "upload",
+      "translation": [
+        "v. 上传, 上载",
+        "n. 上传"
+      ],
+      "glosses": [
+        "上传",
+        "上载"
+      ],
+      "group": "v",
+      "sources": [
+        "https://en.wiktionary.org/wiki/upload (上载, 上传)",
+        "https://dict.youdao.com/result?word=upload&lang=en (上载, 上传)",
+        "https://www.iciba.com/word?w=upload (上传, 上载)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "online",
+      "translation": [
+        "a. 网上, 线上"
+      ],
+      "glosses": [
+        "网上",
+        "线上"
+      ],
+      "group": "a",
+      "sources": [
+        "https://en.wiktionary.org/wiki/online (网上, 线上)",
+        "Tatoeba cmn-eng: 'I bought a book online' -> 網上"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "laptop",
+      "translation": [
+        "n. 笔记本电脑, 手提电脑"
+      ],
+      "glosses": [
+        "笔记本电脑",
+        "手提电脑"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/laptop (笔记本电脑, 手提电脑)",
+        "Tatoeba cmn-eng: 'My laptop crashed' -> 笔记本电脑"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "streaming",
+      "translation": [
+        "n. 流媒体, 流式传输"
+      ],
+      "glosses": [
+        "流媒体",
+        "流式传输"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/streaming (流媒体)",
+        "https://dict.youdao.com/result?word=streaming&lang=en (流媒体, 流式传输)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "startup",
+      "translation": [
+        "n. 新兴公司, 初创公司",
+        "n. 启动"
+      ],
+      "glosses": [
+        "新兴公司",
+        "初创公司"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/startup (初创公司)",
+        "https://dict.youdao.com/result?word=startup&lang=en (新兴公司; 启动)",
+        "https://www.iciba.com/word?w=startup (新兴公司; 启动)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "roadmap",
+      "translation": [
+        "n. 路线图, 计划"
+      ],
+      "glosses": [
+        "路线图",
+        "计划"
+      ],
+      "group": "n",
+      "sources": [
+        "https://dict.youdao.com/result?word=roadmap&lang=en (路线图, 计划, 策略)",
+        "https://en.wiktionary.org/wiki/road_map (路线图)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "stakeholder",
+      "translation": [
+        "n. 利益相关者, 股东",
+        "n. 赌金保管者"
+      ],
+      "glosses": [
+        "利益相关者"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/stakeholder (利益相关者)",
+        "https://dict.youdao.com/result?word=stakeholder&lang=en (股东, 利益相关者)",
+        "https://www.iciba.com/word?w=stakeholder (股东; 利益相关者)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "deliverable",
+      "translation": [
+        "n. 可交付成果",
+        "a. 可交付的"
+      ],
+      "glosses": [
+        "可交付成果"
+      ],
+      "group": "n",
+      "sources": [
+        "https://dict.youdao.com/result?word=deliverable&lang=en (可交付成果, 交付物)",
+        "https://www.iciba.com/word?w=deliverable (应交付的产品)"
+      ],
+      "reason": "ECDICT meaning was wrong or outdated; replaced with the equivalent that at least two independent sources agree on (checked 2026-10-24)."
+    },
+    {
+      "word": "a",
+      "group": "?",
+      "glosses": [
+        "一个"
+      ],
+      "reason": "The indefinite article; ECDICT's line starts with the letter name.",
+      "label": "art"
+    },
+    {
+      "word": "queue",
+      "group": "n",
+      "glosses": [
+        "队列",
+        "一队人"
+      ],
+      "reason": "WordNet's first noun sense is 'a line of people or vehicles waiting'; ECDICT lists the archaic 辫子 (pigtail) first."
+    },
+    {
+      "word": "stunning",
+      "group": "a",
+      "glosses": [
+        "令人震惊的"
+      ],
+      "reason": "WordNet: 'causing great astonishment'; ECDICT lists the literal 打昏迷的 (knocking unconscious) first."
+    },
+    {
+      "word": "envisage",
+      "group": "v",
+      "glosses": [
+        "想象"
+      ],
+      "reason": "WordNet: 'form a mental image of something that is not present'; ECDICT lists 面对 first."
+    },
+    {
+      "word": "molest",
+      "group": "v",
+      "glosses": [
+        "调戏",
+        "干扰"
+      ],
+      "reason": "WordNet: 'harass or assault sexually'; ECDICT lists the dated 妨碍 first."
+    },
+    {
+      "word": "subside",
+      "group": "v",
+      "glosses": [
+        "平息",
+        "沉降"
+      ],
+      "reason": "WordNet's first sense: 'wear off or die down'; ECDICT lists 沉淀 (precipitate) first."
+    },
+    {
+      "word": "formula",
+      "group": "n",
+      "glosses": [
+        "公式",
+        "准则"
+      ],
+      "reason": "WordNet's first sense is the mathematical formula; ECDICT lists 客套语 first."
+    },
+    {
+      "word": "adamant",
+      "group": "a",
+      "glosses": [
+        "固执的",
+        "坚强的"
+      ],
+      "reason": "WordNet has only the adjective ('impervious to pleas'); ECDICT lists the noun 坚硬的东西 first."
+    },
+    {
+      "word": "amalgamate",
+      "group": "v",
+      "glosses": [
+        "合并"
+      ],
+      "reason": "General sense 'combine'; ECDICT lists the chemistry sense 使汞齐化 first."
+    },
+    {
+      "word": "one",
+      "group": "n",
+      "glosses": [
+        "一(个)"
+      ],
+      "reason": "The number one; SemCor tags it as an adjective, and ECDICT's adjective line (一致的, 完整的) is a secondary sense."
+    },
+    {
+      "word": "stay",
+      "group": "v",
+      "glosses": [
+        "停留",
+        "逗留"
+      ],
+      "reason": "Everyday sense 'remain' (vi. 停留, 逗留); ECDICT's first verb line (制止, 延缓) is a rare sense."
+    },
+    {
+      "word": "base",
+      "group": "n",
+      "glosses": [
+        "基础",
+        "基地"
+      ],
+      "reason": "The noun is the everyday sense; SemCor counts are dominated by 'based on'."
+    },
+    {
+      "word": "match",
+      "group": "n",
+      "glosses": [
+        "比赛",
+        "火柴"
+      ],
+      "reason": "The noun (比赛, 火柴) is the everyday sense; SemCor leans towards the verb."
+    },
+    {
+      "word": "mark",
+      "group": "n",
+      "glosses": [
+        "标志",
+        "分数"
+      ],
+      "reason": "The noun is the everyday sense; SemCor leans towards the verb."
+    },
+    {
+      "word": "secure",
+      "group": "a",
+      "glosses": [
+        "安全的",
+        "可靠的"
+      ],
+      "reason": "The adjective is the everyday sense; SemCor leans towards the verb."
+    },
+    {
+      "word": "conduct",
+      "group": "n",
+      "glosses": [
+        "行为",
+        "举动"
+      ],
+      "reason": "The noun 'behaviour' is the common learner sense; the verb line starts with the rare 为人."
+    },
+    {
+      "word": "yes",
+      "group": "r",
+      "glosses": [
+        "是"
+      ],
+      "reason": "Answer word; SemCor's noun tag does not reflect everyday use."
+    },
+    {
+      "word": "duck",
+      "group": "n",
+      "glosses": [
+        "鸭子"
+      ],
+      "reason": "The animal is the everyday sense; SemCor leans towards the verb (闪避)."
+    },
+    {
+      "word": "bat",
+      "group": "n",
+      "glosses": [
+        "蝙蝠",
+        "球棒"
+      ],
+      "reason": "The nouns are the everyday senses; SemCor leans towards the verb."
+    },
+    {
+      "word": "bid",
+      "group": "n",
+      "glosses": [
+        "出价"
+      ],
+      "reason": "The noun 'offer' is the common modern sense; the verb line starts with the archaic 命令, 吩咐."
+    },
+    {
+      "word": "orient",
+      "group": "n",
+      "glosses": [
+        "东方"
+      ],
+      "reason": "The noun; ECDICT's verb line (向东) is a rare literal sense."
+    },
+    {
+      "word": "in",
+      "group": "prep",
+      "glosses": [
+        "在...之内",
+        "在...期间"
+      ],
+      "reason": "Mainly a preposition; WordNet only has the adverb, and ECDICT's preposition line starts with rarer senses."
+    },
+    {
+      "word": "along",
+      "group": "prep",
+      "glosses": [
+        "沿着"
+      ],
+      "reason": "Mainly a preposition ('along the river'); WordNet only has the adverb."
+    },
+    {
+      "word": "height",
+      "group": "n",
+      "glosses": [
+        "高度",
+        "海拔"
+      ],
+      "reason": "The measurement sense; ECDICT lists 高地 (high ground) first."
+    },
+    {
+      "word": "medical",
+      "group": "a",
+      "glosses": [
+        "医学的",
+        "内科的"
+      ],
+      "reason": "Everyday sense 'relating to medicine'; ECDICT lists the dated 药的 first."
+    },
+    {
+      "word": "recruit",
+      "group": "v",
+      "glosses": [
+        "征募"
+      ],
+      "reason": "Everyday sense 'enlist, hire'; ECDICT's verb line starts with the rare 恢复, 补充."
+    },
+    {
+      "word": "come",
+      "group": "v",
+      "glosses": [
+        "来",
+        "过来"
+      ],
+      "reason": "Basic sense 来; Tatoeba cannot rank the one-character gloss."
+    }
+  ],
+  "labels": [
+    {
+      "word": "fuck",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "fucking",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "shit",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "piss",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "bullshit",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "asshole",
+      "labels": [
+        "vulgar"
+      ],
+      "reason": "Taboo swear word in its main use."
+    },
+    {
+      "word": "bitch",
+      "labels": [
+        "vulgar",
+        "offensive"
+      ],
+      "reason": "Main modern use is an insult; ECDICT only gives the literal meanings."
+    },
+    {
+      "word": "bastard",
+      "labels": [
+        "vulgar",
+        "offensive"
+      ],
+      "reason": "Main modern use is an insult; ECDICT only gives the literal meanings."
+    },
+    {
+      "word": "whore",
+      "labels": [
+        "vulgar",
+        "offensive"
+      ],
+      "reason": "Main modern use is an insult; ECDICT only gives the literal meanings."
+    },
+    {
+      "word": "negro",
+      "labels": [
+        "offensive"
+      ],
+      "reason": "Dated term for a Black person, now considered offensive."
+    },
+    {
+      "word": "ass",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "cock",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "prick",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "screw",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "queer",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "retard",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "cripple",
+      "labels": [
+        "offensive-sense"
+      ],
+      "reason": "Ordinary main meaning, but also used as an insult or a vulgar word."
+    },
+    {
+      "word": "damn",
+      "labels": [
+        "mild"
+      ],
+      "reason": "Mild swear word in informal speech."
+    },
+    {
+      "word": "damned",
+      "labels": [
+        "mild"
+      ],
+      "reason": "Mild swear word in informal speech."
+    },
+    {
+      "word": "hell",
+      "labels": [
+        "mild"
+      ],
+      "reason": "Mild swear word in informal speech."
+    },
+    {
+      "word": "crap",
+      "labels": [
+        "mild"
+      ],
+      "reason": "Mild swear word in informal speech."
+    },
+    {
+      "word": "bloody",
+      "labels": [
+        "mild"
+      ],
+      "reason": "Mild swear word in informal speech."
+    }
+  ],
+  "pronunciation": [
+    {
+      "word": "live",
+      "by_group": {
+        "v": "lɪv",
+        "a": "laɪv"
+      },
+      "reason": "Verb /lɪv/, adjective /laɪv/."
+    },
+    {
+      "word": "lead",
+      "by_group": {
+        "v": "liːd",
+        "n": "led"
+      },
+      "reason": "Verb /liːd/; the metal is /led/."
+    },
+    {
+      "word": "wind",
+      "by_group": {
+        "n": "wɪnd",
+        "v": "waɪnd"
+      },
+      "reason": "Noun (air) /wɪnd/, verb (turn) /waɪnd/."
+    },
+    {
+      "word": "tear",
+      "by_group": {
+        "n": "tɪr",
+        "v": "ter"
+      },
+      "reason": "Noun (from the eye) /tɪr/, verb (rip) /ter/."
+    },
+    {
+      "word": "bow",
+      "by_group": {
+        "v": "baʊ",
+        "n": "boʊ"
+      },
+      "reason": "Verb (bend) /baʊ/, noun (weapon, knot) /boʊ/."
+    },
+    {
+      "word": "close",
+      "by_group": {
+        "a": "kloʊs",
+        "v": "kloʊz"
+      },
+      "reason": "Adjective /kloʊs/, verb /kloʊz/."
+    },
+    {
+      "word": "use",
+      "by_group": {
+        "n": "juːs",
+        "v": "juːz"
+      },
+      "reason": "Noun /juːs/, verb /juːz/."
+    },
+    {
+      "word": "excuse",
+      "by_group": {
+        "n": "ɪkˈskjuːs",
+        "v": "ɪkˈskjuːz"
+      },
+      "reason": "Noun /-s/, verb /-z/."
+    },
+    {
+      "word": "abuse",
+      "by_group": {
+        "n": "əˈbjuːs",
+        "v": "əˈbjuːz"
+      },
+      "reason": "Noun /-s/, verb /-z/."
+    },
+    {
+      "word": "wound",
+      "by_group": {
+        "n": "wuːnd",
+        "v": "wuːnd"
+      },
+      "reason": "Injury /wuːnd/; /waʊnd/ is the past of wind."
+    },
+    {
+      "word": "read",
+      "by_group": {
+        "v": "riːd"
+      },
+      "reason": "Base form /riːd/; /red/ is the past tense."
+    },
+    {
+      "word": "does",
+      "by_group": {
+        "v": "dʌz"
+      },
+      "reason": "Full form /dʌz/; /dɪz/ is a reduced variant."
+    },
+    {
+      "word": "bass",
+      "by_group": {
+        "n": "beɪs",
+        "a": "beɪs"
+      },
+      "reason": "Music sense /beɪs/; /bæs/ is the fish."
+    },
+    {
+      "word": "dove",
+      "by_group": {
+        "n": "dʌv"
+      },
+      "reason": "The bird /dʌv/; /doʊv/ is a past tense of dive."
+    },
+    {
+      "word": "sow",
+      "by_group": {
+        "v": "soʊ",
+        "n": "saʊ"
+      },
+      "reason": "Verb (plant) /soʊ/, noun (pig) /saʊ/."
+    },
+    {
+      "word": "unite",
+      "ipa": "juˈnaɪt",
+      "reason": "Corrects CMUdict: CMUdict stresses the first syllable (Y UW1 N AY2 T).",
+      "sources": [
+        "ECDICT British transcription has the same main stress",
+        "Standard US dictionaries (e.g. Merriam-Webster) stress the same syllable"
+      ]
+    },
+    {
+      "word": "retort",
+      "ipa": "rɪˈtɔːrt",
+      "reason": "Corrects CMUdict: CMUdict stresses the first syllable (R IY1 T AO2 R T).",
+      "sources": [
+        "ECDICT British transcription has the same main stress",
+        "Standard US dictionaries (e.g. Merriam-Webster) stress the same syllable"
+      ]
+    },
+    {
+      "word": "inventory",
+      "ipa": "ˈɪnvənˌtɔːri",
+      "reason": "Corrects CMUdict: CMUdict puts the main stress on -to- (IH2 ... AO1).",
+      "sources": [
+        "ECDICT British transcription has the same main stress",
+        "Standard US dictionaries (e.g. Merriam-Webster) stress the same syllable"
+      ]
+    },
+    {
+      "word": "upbraid",
+      "ipa": "ʌpˈbreɪd",
+      "reason": "Corrects CMUdict: CMUdict stresses the first syllable (AH1 P B R EY2 D).",
+      "sources": [
+        "ECDICT British transcription has the same main stress",
+        "Standard US dictionaries (e.g. Merriam-Webster) stress the same syllable"
+      ]
+    }
+  ]
 }

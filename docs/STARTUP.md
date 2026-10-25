@@ -40,18 +40,24 @@ npm run import:dict
 
 `server/dictionary.json` 来自两个开源数据集，原始文件不提交到 Git：
 
-- [ECDICT](https://github.com/skywind3000/ECDICT)（MIT）：单词、音标、中英释义、考试标签、词频
-- [Tatoeba](https://tatoeba.org) 中英句对（CC-BY 2.0 FR，下载自 [manythings.org](https://www.manythings.org/anki/)）：例句及中文翻译
+- [ECDICT](https://github.com/skywind3000/ECDICT)（MIT）：单词、中英释义、英式音标、考试标签、词频
+- [Tatoeba](https://tatoeba.org) 中英句对（CC-BY 2.0 FR，下载自 [manythings.org](https://www.manythings.org/anki/)）：例句及中文翻译，以及判断常用释义的证据
+- [WordNet 3.0](https://wordnet.princeton.edu/)（Princeton WordNet 许可）：只用 `index.sense` 里的 SemCor 词性使用次数
+- [CMU Pronouncing Dictionary](https://github.com/cmusphinx/cmudict)（BSD-2-Clause）：美式音标
 
 ```bash
 cd server
-mkdir -p .dict-src/ecdict .dict-src/tatoeba
+mkdir -p .dict-src/ecdict .dict-src/tatoeba .dict-src/cmudict .dict-src/wordnet
 curl -L -o .dict-src/ecdict/ecdict.csv https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv
 curl -L -o .dict-src/tatoeba/cmn-eng.zip https://www.manythings.org/anki/cmn-eng.zip
 unzip -o .dict-src/tatoeba/cmn-eng.zip -d .dict-src/tatoeba
+curl -L -o .dict-src/cmudict/cmudict.dict https://raw.githubusercontent.com/cmusphinx/cmudict/master/cmudict.dict
+curl -L -o .dict-src/wordnet/WordNet-3.0.tar.gz https://wordnetcode.princeton.edu/3.0/WordNet-3.0.tar.gz
+tar -xzf .dict-src/wordnet/WordNet-3.0.tar.gz -C .dict-src/wordnet WordNet-3.0/dict/index.sense WordNet-3.0/LICENSE
 cp dictionary.json .dict-src/previous.json
 python3 -I -B build_dictionary.py .dict-src/ecdict/ecdict.csv .dict-src/tatoeba/cmn.txt dictionary.json \
-  --previous .dict-src/previous.json --report dictionary.build.json
+  --previous .dict-src/previous.json --report dictionary.build.json \
+  --cmudict .dict-src/cmudict/cmudict.dict --wordnet .dict-src/wordnet/WordNet-3.0/dict/index.sense
 python3 -I -B dictionary_audit.py .dict-src/ecdict/ecdict.csv dictionary.json .dict-src/previous.json > .dict-src/audit.json
 ```
 

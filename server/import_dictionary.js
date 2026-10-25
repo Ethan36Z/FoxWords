@@ -23,16 +23,19 @@ function importDictionary(file = DICTIONARY_FILE) {
 
   // Existing words keep their id; words no longer in the file are removed.
   const upsert = db.prepare(`
-    INSERT INTO dictionary (word, phonetic, translation, definition, example, exampleZh, level, tags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO dictionary (word, phonetic, phoneticUk, meaning, translation, definition, example, exampleZh, level, tags, labels)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(word) DO UPDATE SET
       phonetic = excluded.phonetic,
+      phoneticUk = excluded.phoneticUk,
+      meaning = excluded.meaning,
       translation = excluded.translation,
       definition = excluded.definition,
       example = excluded.example,
       exampleZh = excluded.exampleZh,
       level = excluded.level,
-      tags = excluded.tags
+      tags = excluded.tags,
+      labels = excluded.labels
   `);
 
   db.exec("CREATE TEMP TABLE IF NOT EXISTS import_words (word TEXT PRIMARY KEY)");
@@ -47,12 +50,15 @@ function importDictionary(file = DICTIONARY_FILE) {
       upsert.run(
         word,
         clean(it.phonetic),
+        clean(it.phoneticUk),
+        clean(it.meaning),
         clean(it.translation),
         clean(it.definition),
         cleanExample(it.example),
         clean(it.exampleZh),
         clean(it.level),
-        clean(it.tags)
+        clean(it.tags),
+        clean(it.labels)
       );
     }
 

@@ -177,13 +177,14 @@ const IN_BOOK = "(? = '' OR (' ' || d.tags || ' ') LIKE '% ' || ? || ' %')";
 
 function readSettings() {
   const row = db
-    .prepare("SELECT exampleFirst, dailyGoal, studyMix, book FROM settings WHERE id = 1")
+    .prepare("SELECT exampleFirst, dailyGoal, studyMix, book, includeSensitive FROM settings WHERE id = 1")
     .get();
   return {
     exampleFirst: Boolean(row.exampleFirst),
     dailyGoal: row.dailyGoal,
     studyMix: STUDY_MIXES.includes(row.studyMix) ? row.studyMix : "mixed",
     book: BOOK_IDS.includes(row.book) ? row.book : "",
+    includeSensitive: Boolean(row.includeSensitive),
   };
 }
 
@@ -209,11 +210,13 @@ app.put("/api/settings", (req, res) => {
     const studyMix = STUDY_MIXES.includes(incoming.studyMix) ? incoming.studyMix : current.studyMix;
     const book =
       incoming.book === "" || BOOK_IDS.includes(incoming.book) ? incoming.book : current.book;
+    const includeSensitive =
+      typeof incoming.includeSensitive === "boolean" ? incoming.includeSensitive : current.includeSensitive;
 
     db.prepare(
-      "UPDATE settings SET exampleFirst = ?, dailyGoal = ?, studyMix = ?, book = ? WHERE id = 1"
-    ).run(exampleFirst ? 1 : 0, dailyGoal, studyMix, book);
-    res.json({ ok: true, exampleFirst, dailyGoal, studyMix, book });
+      "UPDATE settings SET exampleFirst = ?, dailyGoal = ?, studyMix = ?, book = ?, includeSensitive = ? WHERE id = 1"
+    ).run(exampleFirst ? 1 : 0, dailyGoal, studyMix, book, includeSensitive ? 1 : 0);
+    res.json({ ok: true, exampleFirst, dailyGoal, studyMix, book, includeSensitive });
   } catch (err) {
     console.error("Failed to save settings:", err);
     res.status(500).json({ error: "Failed to save settings" });
@@ -221,7 +224,11 @@ app.put("/api/settings", (req, res) => {
 });
 
 // -------------------- dictionary search (SQLite) --------------------
-const WORD_COLUMNS = "id, word, phonetic, translation, definition, example, exampleZh, level";
+const WORD_COLUMNS =
+  "id, word, phonetic, phoneticUk, meaning, translation, definition, example, exampleZh, level, labels";
+// Words whose main use is vulgar or a slur are only studied when the learner opts in.
+// They stay searchable in the dictionary.
+const NOT_SENSITIVE = "(? = 1 OR (' ' || d.labels || ' ') NOT GLOB '* vulgar *' AND (' ' || d.labels || ' ') NOT GLOB '* offensive *')";
 
 app.get("/api/dictionary", (req, res) => {
   try {
@@ -279,15 +286,16 @@ const UNFAMILIAR = "s.unknownCount > s.knownCount AND s.tooEasy = 0";
 const MIXED_REVIEW_SHARE = 0.3;
 
 // New = never answered (and so never marked 太简单), from the chosen book
-function pickNewWords(limit, book) {
+function pickNewWords(limit, book, includeSensitive = false) {
   return db
     .prepare(
       `SELECT ${WORD_COLUMNS} FROM dictionary d
        WHERE NOT EXISTS (SELECT 1 FROM word_stats s WHERE s.word = d.word)
          AND ${IN_BOOK}
+         AND ${NOT_SENSITIVE}
        ORDER BY RANDOM() LIMIT ?`
     )
-    .all(book, book, limit);
+    .all(book, book, includeSensitive ? 1 : 0, limit);
 }
 
 function pickReviewWords(limit) {
@@ -322,12 +330,12 @@ function interleave(newWords, reviewWords) {
 }
 
 // Review words come from every book: an unfamiliar word stays worth reviewing
-function buildBatch(limit, mix, book) {
-  if (mix === "new") return pickNewWords(limit, book);
+function buildBatch(limit, mix, book, includeSensitive) {
+  if (mix === "new") return pickNewWords(limit, book, includeSensitive);
   if (mix === "review") return pickReviewWords(limit);
 
   const review = pickReviewWords(Math.round(limit * MIXED_REVIEW_SHARE));
-  const fresh = pickNewWords(limit - review.length, book);
+  const fresh = pickNewWords(limit - review.length, book, includeSensitive);
   return interleave(fresh, review);
 }
 
@@ -338,7 +346,7 @@ function getDayKey() {
 
 app.get("/api/words/today", (req, res) => {
   try {
-    const { dailyGoal, studyMix, book } = readSettings();
+    const { dailyGoal, studyMix, book, includeSensitive } = readSettings();
 
     const qLimit = parseInt(String(req.query.limit || "0"), 10);
     const want = qLimit > 0 ? qLimit : dailyGoal;
@@ -346,7 +354,7 @@ app.get("/api/words/today", (req, res) => {
 
     // refresh=1 skips the cache and picks a new batch
     const refresh = String(req.query.refresh || "") === "1";
-    const key = `${getDayKey()}|${limit}|${studyMix}|${book}`;
+    const key = `${getDayKey()}|${limit}|${studyMix}|${book}|${includeSensitive ? 1 : 0}`;
 
     if (!refresh && todayCache.key === key) {
       // Drop words marked 太简单 since the batch was built
@@ -357,7 +365,7 @@ app.get("/api/words/today", (req, res) => {
       return res.json(todayCache.rows);
     }
 
-    const rows = buildBatch(limit, studyMix, book);
+    const rows = buildBatch(limit, studyMix, book, includeSensitive);
     // Always cache the latest batch so the next normal load reuses it
     todayCache = { key, rows };
 

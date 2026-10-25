@@ -97,14 +97,20 @@ def compare(old_entries, new_entries):
         "added": len(new.keys() - old.keys()),
         "removed": sorted(old.keys() - new.keys()),
     }
+    # Since Phase 3B "phonetic" is General American (CMUdict) and the ECDICT
+    # transcription lives in "phoneticUk"; compare like with like.
+    uk = lambda e: e.get("phoneticUk", e["phonetic"]) if "phoneticUk" in e else e["phonetic"]
+    old_uk = {w: (old[w].get("phoneticUk") if "phoneticUk" in old[w] else old[w]["phonetic"]) for w in common}
     ph = Counter()
     for w in common:
-        if old[w]["phonetic"] != new[w]["phonetic"]:
-            for k in phonetic_change_kind(old[w]["phonetic"], new[w]["phonetic"]):
+        if old_uk[w] != uk(new[w]):
+            for k in phonetic_change_kind(old_uk[w], uk(new[w])):
                 ph[k] += 1
-    res["phonetic_changed"] = sum(1 for w in common if old[w]["phonetic"] != new[w]["phonetic"])
-    res["phonetic_change_kinds"] = dict(ph)
-    res["phonetic_lost"] = sorted(w for w in common if old[w]["phonetic"] and not new[w]["phonetic"])
+    res["phonetic_uk_changed"] = sum(1 for w in common if old_uk[w] != uk(new[w]))
+    res["phonetic_uk_change_kinds"] = dict(ph)
+    res["phonetic_lost"] = sorted(w for w in common if (old[w]["phonetic"] or old_uk[w]) and not new[w]["phonetic"])
+    if "phoneticSource" in next(iter(new.values())):
+        res["phonetic_source"] = dict(Counter(new[w]["phoneticSource"] for w in new))
 
     tr = Counter()
     tr_examples = {}
@@ -112,7 +118,9 @@ def compare(old_entries, new_entries):
         o, n = old[w]["translation"].split("\n"), new[w]["translation"].split("\n")
         if o == n:
             continue
-        if n[: len(o)] == o:
+        if sorted(n) == sorted(o):
+            kind = "same lines, core meaning moved first"
+        elif n[: len(o)] == o:
             kind = "lines added (was cut at 4)"
         elif set(n) < set(o) and all(b.POINTER_LINE_RE.match(b.POS_RE.sub("", ln)) for ln in set(o) - set(n)):
             kind = "pointer line to another word removed"
