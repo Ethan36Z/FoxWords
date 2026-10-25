@@ -70,10 +70,10 @@ function done(job) {
 test("pilot selection: 中考 words without examples, unverified meanings held back", () => {
   const { eligible, held } = selectWords(dictionary, [], { set: "zk-missing" });
   assert.equal(eligible.length + held.length, 147);
-  assert.equal(eligible.length, 120);
-  // 24 meanings that are only ECDICT's order, and 3 words held by hand
+  assert.equal(eligible.length, 119);
+  // 24 meanings that are only ECDICT's order, and 4 words held by hand
   assert.equal(held.filter((h) => h.reason.startsWith("core meaning not verified")).length, 24);
-  assert.deepEqual(held.filter((h) => h.reason.startsWith("held:")).map((h) => h.word).sort(), ["cheer", "hotdog", "pop"]);
+  assert.deepEqual(held.filter((h) => h.reason.startsWith("held:")).map((h) => h.word).sort(), ["cheer", "hotdog", "pop", "whom"]);
   assert.ok(eligible.some((e) => e.word === "spell")); // corrected meaning, now eligible
   assert.ok(eligible.every((e) => !e.example && e.meaning && !e.meaningSource.startsWith("ecdict-order")));
   // already accepted words are not generated again

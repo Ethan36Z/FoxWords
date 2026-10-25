@@ -12,6 +12,10 @@
   {
    "word": "cheer",
    "reason": "WordNet chose n. 愉快, but the school sense is 欢呼 (vi./n.); needs a decision before generation."
+  },
+  {
+   "word": "whom",
+   "reason": "Generated examples were ambiguous or mistranslated in 3 of 4 runs (evaluation and pilot); write its example by hand instead of regenerating."
   }
  ]
 }
