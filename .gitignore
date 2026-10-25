@@ -47,3 +47,5 @@ server/.dict-src/
 
 # Python bytecode from the dictionary build scripts
 __pycache__/
+# AI example generation jobs (logs, raw results); accepted examples go to server/ai_examples.json
+server/.ai-work/

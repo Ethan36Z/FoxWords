@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const db = require("./db");
 const { importDictionaryIfChanged } = require("./import_dictionary");
+const { importAiExamplesIfChanged } = require("./import_ai_examples");
 const { CorvusError, corvusClientFromEnv } = require("./corvusClient");
 const { BOOKS } = require("./books");
 
@@ -224,6 +225,32 @@ app.put("/api/settings", (req, res) => {
 });
 
 // -------------------- dictionary search (SQLite) --------------------
+// Reviewed AI example for words without a human example, read from the
+// ai_examples table (never generated on request). Only served while the
+// word's core meaning is still the one the example was written for.
+function withAiExamples(rows) {
+  const need = rows.filter((r) => !r.example);
+  if (!need.length) return rows;
+  const words = [...new Set(need.map((r) => r.word))];
+  const found = new Map(
+    db
+      .prepare(
+        `SELECT word, sentence, translation, meaning, source, model, edited FROM ai_examples
+         WHERE word IN (${words.map(() => "?").join(",")})`
+      )
+      .all(...words)
+      .map((a) => [a.word, a])
+  );
+  return rows.map((r) => {
+    const a = !r.example && found.get(r.word);
+    if (!a || a.meaning !== r.meaning) return r;
+    return {
+      ...r,
+      aiExample: { sentence: a.sentence, translation: a.translation, source: a.source, model: a.model, edited: Boolean(a.edited) },
+    };
+  });
+}
+
 const WORD_COLUMNS =
   "id, word, phonetic, phoneticUk, meaning, translation, definition, example, exampleZh, level, labels";
 // Words whose main use is vulgar or a slur are only studied when the learner opts in.
@@ -253,7 +280,7 @@ app.get("/api/dictionary", (req, res) => {
       )
       .all(`${q}%`, `%${q}%`, `${q}%`, limit, offset);
 
-    res.json(rows);
+    res.json(withAiExamples(rows));
   } catch (err) {
     console.error("GET /api/dictionary error:", err);
     res.status(500).json({ error: "Failed to load dictionary" });
@@ -362,14 +389,14 @@ app.get("/api/words/today", (req, res) => {
         db.prepare("SELECT word FROM word_stats WHERE tooEasy = 1").all().map((r) => r.word)
       );
       todayCache.rows = todayCache.rows.filter((w) => !easy.has(w.word));
-      return res.json(todayCache.rows);
+      return res.json(withAiExamples(todayCache.rows));
     }
 
     const rows = buildBatch(limit, studyMix, book, includeSensitive);
     // Always cache the latest batch so the next normal load reuses it
     todayCache = { key, rows };
 
-    res.json(rows);
+    res.json(withAiExamples(rows));
   } catch (err) {
     console.error("GET /api/words/today error:", err);
     res.status(500).json({ error: "Failed to load today's words" });
@@ -471,6 +498,8 @@ app.get("/api/words/stats", (req, res) => {
 if (require.main === module) {
   const imported = importDictionaryIfChanged();
   if (imported !== null) console.log("dictionary.json changed, imported words:", imported);
+  const aiImported = importAiExamplesIfChanged();
+  if (aiImported !== null) console.log("ai_examples.json changed, loaded AI examples:", aiImported);
 
   app.listen(PORT, () => {
     console.log(`FoxWords backend running on port ${PORT}`);

@@ -5,3 +5,4 @@ settings.json
 npm-debug.log*
 .dict-src
 test
+.ai-work

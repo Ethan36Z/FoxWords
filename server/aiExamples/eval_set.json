@@ -1,0 +1,171 @@
+{
+ "about": "Real-model evaluation set for the AI example pilot (Phase 4A). Every word is eligible for generation and lacks a human example. Run the same set at batch sizes 1, 4 and 8 and review all results with docs/AI_EXAMPLES.md.",
+ "categories": {
+  "concrete noun": "Simple, picturable nouns: the baseline. Expect near-perfect results.",
+  "abstract noun": "Harder to use naturally in a short sentence; check the sentence is not vague or bookish.",
+  "adjective": "Check the adjective sense and that the translation is natural, not word-for-word.",
+  "adverb": "Placement and meaning; 'especially' is often misused.",
+  "verb": "Includes irregular forms (retell/retold, swing/swung, spread) and spelling changes (nod/nodded); 'practise' is the British spelling.",
+  "function word": "Pronouns and ordinals are easy to get grammatically wrong in examples.",
+  "suspect meaning": "The dictionary's core meaning is probably wrong here (hotdog = 卖弄, airline = 航线, weekday = 周日, rubbish = 胡说, hamburger = 汉堡(德国港口), dumpling = 面团布丁, clone = 无性系). The model should set meaning_ok to false or write a sentence that exposes the mismatch. None of these may be accepted until the meaning is fixed.",
+  "form": "Abbreviation and British spellings: check the word appears as written (DVD in capitals is fine)."
+ },
+ "items": [
+  {
+   "word": "bamboo",
+   "category": "concrete noun"
+  },
+  {
+   "word": "cabbage",
+   "category": "concrete noun"
+  },
+  {
+   "word": "panda",
+   "category": "concrete noun"
+  },
+  {
+   "word": "postcard",
+   "category": "concrete noun"
+  },
+  {
+   "word": "environment",
+   "category": "abstract noun"
+  },
+  {
+   "word": "communication",
+   "category": "abstract noun"
+  },
+  {
+   "word": "competition",
+   "category": "abstract noun"
+  },
+  {
+   "word": "relation",
+   "category": "abstract noun"
+  },
+  {
+   "word": "victory",
+   "category": "abstract noun"
+  },
+  {
+   "word": "skill",
+   "category": "abstract noun"
+  },
+  {
+   "word": "fantastic",
+   "category": "adjective"
+  },
+  {
+   "word": "humorous",
+   "category": "adjective"
+  },
+  {
+   "word": "lively",
+   "category": "adjective"
+  },
+  {
+   "word": "personal",
+   "category": "adjective"
+  },
+  {
+   "word": "proper",
+   "category": "adjective"
+  },
+  {
+   "word": "bitter",
+   "category": "adjective"
+  },
+  {
+   "word": "especially",
+   "category": "adverb"
+  },
+  {
+   "word": "everywhere",
+   "category": "adverb"
+  },
+  {
+   "word": "aloud",
+   "category": "adverb"
+  },
+  {
+   "word": "dismiss",
+   "category": "verb"
+  },
+  {
+   "word": "retell",
+   "category": "verb"
+  },
+  {
+   "word": "nod",
+   "category": "verb"
+  },
+  {
+   "word": "shout",
+   "category": "verb"
+  },
+  {
+   "word": "spread",
+   "category": "verb"
+  },
+  {
+   "word": "swing",
+   "category": "verb"
+  },
+  {
+   "word": "practise",
+   "category": "verb"
+  },
+  {
+   "word": "ourselves",
+   "category": "function word"
+  },
+  {
+   "word": "whom",
+   "category": "function word"
+  },
+  {
+   "word": "seventh",
+   "category": "function word"
+  },
+  {
+   "word": "hotdog",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "airline",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "weekday",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "rubbish",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "hamburger",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "dumpling",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "clone",
+   "category": "suspect meaning"
+  },
+  {
+   "word": "dvd",
+   "category": "form"
+  },
+  {
+   "word": "behaviour",
+   "category": "form"
+  },
+  {
+   "word": "theatre",
+   "category": "form"
+  }
+ ]
+}

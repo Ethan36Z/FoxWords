@@ -8,7 +8,8 @@
     "dev": "node index.js",
     "import:dict": "node import_dictionary.js",
     "test": "node --test test/*.test.js",
-    "test:dict": "python3 -I -B -m unittest discover -s test -p \"test_*.py\""
+    "test:dict": "python3 -I -B -m unittest discover -s test -p \"test_*.py\"",
+    "ai:examples": "node aiExamples/cli.js"
   },
   "keywords": [],
   "author": "",

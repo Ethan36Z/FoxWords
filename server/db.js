@@ -44,6 +44,22 @@ db.exec(`
     value TEXT
   );
 
+  -- Reviewed AI example sentences, loaded from ai_examples.json (the file is
+  -- the source of truth). Keyed by word and kept apart from the dictionary,
+  -- so dictionary rebuilds never touch them.
+  CREATE TABLE IF NOT EXISTS ai_examples (
+    word TEXT PRIMARY KEY,
+    sentence TEXT NOT NULL,
+    translation TEXT NOT NULL,
+    meaning TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'corvus',
+    model TEXT DEFAULT '',
+    promptVersion TEXT DEFAULT '',
+    reviewer TEXT DEFAULT '',
+    reviewedAt TEXT DEFAULT '',
+    edited INTEGER NOT NULL DEFAULT 0
+  );
+
   -- How often the learner answered "认识" / "不认识" for each word.
   -- Keyed by word (not dictionary id) so it survives dictionary re-imports.
   CREATE TABLE IF NOT EXISTS word_stats (
