@@ -71,7 +71,16 @@ async function main(argv) {
       items: eligible.map(planItem),
       held,
     });
+    // A sheet to check meanings before anything is generated
+    const { partOfSpeech } = require("./prompt");
+    const clean = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
+    const sheet = [["word", "use_as", "meaning", "meaning_source", "english_definition_not_sent", "ok_to_generate", "note"].join("\t")];
+    for (const it of job.plan.items) {
+      sheet.push([it.word, partOfSpeech(it.meaning), it.meaning, it.meaningSource, it.definition, "", ""].map(clean).join("\t"));
+    }
+    fs.writeFileSync(path.join(job.dir, "meanings.tsv"), sheet.join("\n") + "\n");
     console.log(`job ${a.job}: ${job.plan.items.length} words to generate, ${held.length} held back`);
+    console.log(`meanings to check before running: ${path.relative(SERVER, path.join(job.dir, "meanings.tsv"))}`);
     for (const h of held) console.log(`  held: ${h.word} (${h.reason})`);
     return;
   }

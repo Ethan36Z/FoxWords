@@ -46,14 +46,26 @@ A word is generated only if all of these hold:
 Words whose core meaning is only ECDICT's order are held back for meaning
 review: an example would cement a meaning nobody has checked.
 
+`aiExamples/holds.json` lists words held back by hand because their core
+meaning is uncertain (*hotdog*, *pop*, *cheer*). Remove an entry only after
+the meaning has been checked and, if needed, corrected in
+`dictionary_overrides.json`. The model's `meaning_ok` answer is only a hint
+for reviewers; it never decides what is generated or accepted.
+
 | Set | Eligible | Held back |
 | --- | --- | --- |
-| 中考 without examples (pilot) | 122 | 25 |
+| 中考 without examples (pilot) | 120 | 27 |
 | Whole dictionary | 7,696 | 1,569 |
 
 ## Generation
 
-Each request asks for one JSON object with one item per word:
+Each request (prompt `example-v4`) gives every word with its part of speech
+("use as: verb") and core meaning, and asks the model to use the first sense
+listed. The Chinese must be a natural translation of the whole sentence, not
+the dictionary gloss copied word for word. ECDICT's English definition is not
+sent: it is the first WordNet line and often describes another sense
+(*airline*: "a hose that carries air"). The request asks for one JSON object
+with one item per word:
 
 - a 6–14 word sentence using the word in its core meaning;
 - a Simplified Chinese translation;
@@ -86,7 +98,7 @@ Corvus limits are respected:
 | Result | Meaning | Examples |
 | --- | --- | --- |
 | `invalid` | Hard failure; the word is retried alone | not JSON or cut off, wrong word, no Chinese, too short or long, several sentences, unsafe word, duplicate sentence |
-| `needs_review` | Usable, but a person must look closely | core meaning not visible in the translation, model doubts the meaning, Traditional characters, word form not found (irregular verb?) |
+| `needs_review` | Usable, but a person must look closely | core meaning not visible in the translation (no shared two-character core), model doubts the meaning, Traditional characters, word form not found (irregular verb?), sentence under 6 words, function word (pronoun, preposition, number …) |
 | `candidate` | All checks passed | still reviewed |
 
 ## Review
@@ -152,6 +164,15 @@ Requests at 4 per minute, before retries (expect 10–20% more):
 
 These times assume each request finishes within 15 s. Real Qwen latency for 4
 or 8 items is measured in the evaluation run.
+
+## Pilot (prepared, not run)
+
+1. `plan --job pilot-zk` freezes the 120 words and writes `meanings.tsv`: the
+   part of speech and meaning each example will be written for. Check it
+   before running; hold or correct any word whose meaning is wrong.
+2. Run with batch size 4 and the default 3 attempts per word: 30 requests at
+   4 per minute, about 8 minutes plus retries.
+3. Export `review.tsv`, review every item with the checklist, then `accept`.
 
 ## First real-model run (acceptance plan)
 

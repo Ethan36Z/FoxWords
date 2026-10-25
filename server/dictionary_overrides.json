@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "notes": "Manual corrections applied by build_dictionary.py after its rules. Every entry gives a reason. Meaning overrides either reorder glosses that ECDICT already has, or cite at least two independent sources when they replace a wrong ECDICT meaning. A fix with a 'from' or 'source_lines' value is only applied while the source still matches, so upstream changes are reviewed instead of overwritten.",
   "include": [
     {
@@ -725,6 +725,112 @@
         "过来"
       ],
       "reason": "Basic sense 来; Tatoeba cannot rank the one-character gloss."
+    },
+    {
+      "word": "airline",
+      "group": "n",
+      "glosses": [
+        "航空公司"
+      ],
+      "reason": "The modern sense is 航空公司 (ECDICT lists it third, after the dated 航线); Tatoeba translates 'airlines' as 航空公司."
+    },
+    {
+      "word": "weekday",
+      "group": "n",
+      "glosses": [
+        "平日"
+      ],
+      "reason": "周日 usually means Sunday in modern Mandarin, the opposite of a weekday; ECDICT's own 平日 is the correct sense."
+    },
+    {
+      "word": "rubbish",
+      "group": "n",
+      "glosses": [
+        "垃圾",
+        "废物"
+      ],
+      "reason": "WordNet's first sense is waste material (垃圾); 胡说 is the secondary, figurative sense."
+    },
+    {
+      "word": "hamburger",
+      "group": "n",
+      "glosses": [
+        "汉堡包"
+      ],
+      "reason": "ECDICT's first gloss 汉堡(德国港口) is the city of Hamburg; its own 汉堡包 is the food (Tatoeba: 漢堡)."
+    },
+    {
+      "word": "practise",
+      "group": "v",
+      "glosses": [
+        "练习",
+        "实践"
+      ],
+      "reason": "British spelling of practice; the everyday sense is 练习 (ECDICT lists it third)."
+    },
+    {
+      "word": "spell",
+      "group": "v",
+      "glosses": [
+        "拼写"
+      ],
+      "reason": "The school sense is to spell a word (vt. 拼写); Tatoeba translates it with 拼 in 8 of 8 sentences. ECDICT lists the noun 符咒 first."
+    },
+    {
+      "word": "pence",
+      "group": "n",
+      "glosses": [
+        "便士"
+      ],
+      "reason": "Plural of penny; ECDICT's gloss carries notes (非正式, copper) that are not part of the meaning."
+    },
+    {
+      "word": "dumpling",
+      "translation": [
+        "n. 饺子, 团子",
+        "n. 面团布丁"
+      ],
+      "glosses": [
+        "饺子",
+        "团子"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/dumpling (food: 饺子)",
+        "https://dict.youdao.com/result?word=dumpling&lang=en (n. 饺子; 汤团)"
+      ],
+      "reason": "ECDICT's meaning is dated or technical (面团布丁 / 无性系 / 擦子); replaced with the equivalent two independent sources agree on (checked 2026-10-25)."
+    },
+    {
+      "word": "clone",
+      "translation": [
+        "n. 克隆, 无性系",
+        "v. 克隆"
+      ],
+      "glosses": [
+        "克隆"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/clone (克隆)",
+        "https://dict.youdao.com/result?word=clone&lang=en (n. 克隆; v. 克隆)"
+      ],
+      "reason": "ECDICT's meaning is dated or technical (面团布丁 / 无性系 / 擦子); replaced with the equivalent two independent sources agree on (checked 2026-10-25)."
+    },
+    {
+      "word": "eraser",
+      "translation": [
+        "n. 橡皮擦, 橡皮"
+      ],
+      "glosses": [
+        "橡皮擦"
+      ],
+      "group": "n",
+      "sources": [
+        "https://en.wiktionary.org/wiki/eraser (橡皮擦, 橡皮)",
+        "https://dict.youdao.com/result?word=eraser&lang=en (n. 橡皮擦)"
+      ],
+      "reason": "ECDICT's meaning is dated or technical (面团布丁 / 无性系 / 擦子); replaced with the equivalent two independent sources agree on (checked 2026-10-25)."
     }
   ],
   "labels": [

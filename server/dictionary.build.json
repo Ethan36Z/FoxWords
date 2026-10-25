@@ -4,13 +4,13 @@
   "tatoeba_sha256": "d766002332a8f21099afd7427138d44f06bed7486a18f7f0f26f217092667d73",
   "cmudict_sha256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22",
   "wordnet_index_sense_sha256": "68b3a468cddfd8e92134b9b0624339a02a1b837159243c297c5f138a3d618392",
-  "previous_sha256": "4d1fbde8ebb7e27d2f5c060b2cdb486def44588c58d8521d984a83ff575c647f"
+  "previous_sha256": "f6890010854cd7d94c13fd2d7df301d0774f3ac38bf2dbf6c68d877b88f56b1e"
  },
- "overrides_version": 2,
+ "overrides_version": 3,
  "freq_rank_limit": 10000,
  "words": 12943,
  "with_example": 3678,
- "examples_kept_from_previous": 3199,
+ "examples_kept_from_previous": 3678,
  "with_phonetic": 12932,
  "by_reason": {
   "existing": 10443,
@@ -23,16 +23,16 @@
   "override": 76
  },
  "meaning_source": {
-  "single": 7593,
-  "ecdict-order": 1855,
-  "single, glosses by tatoeba": 1392,
+  "single": 7585,
+  "ecdict-order": 1854,
+  "single, glosses by tatoeba": 1391,
   "wordnet": 1113,
   "wordnet+tatoeba, glosses by tatoeba": 409,
   "wordnet, glosses by tatoeba": 243,
   "ecdict-order, glosses by tatoeba": 112,
   "tatoeba, glosses by tatoeba": 92,
+  "override": 46,
   "wordnet (tatoeba disagrees)": 39,
-  "override": 36,
   "wordnet+tatoeba": 26,
   "tatoeba (wordnet disagrees), glosses by tatoeba": 13,
   "wordnet (tatoeba disagrees), glosses by tatoeba": 12,
@@ -121,22 +121,6 @@
   ]
  },
  "problems": [],
- "added": [
-  "bastard",
-  "bitch",
-  "deliverable",
-  "download",
-  "fuck",
-  "fucking",
-  "laptop",
-  "online",
-  "piss",
-  "roadmap",
-  "shit",
-  "stakeholder",
-  "startup",
-  "streaming",
-  "upload"
- ],
+ "added": [],
  "removed": []
 }

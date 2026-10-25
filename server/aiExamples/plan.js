@@ -8,11 +8,20 @@
 const { hasValidExample } = require("../dictionaryStats");
 const { BOOKS } = require("../books");
 
+const fs = require("fs");
+const path = require("path");
+
 const SENSITIVE = /(^| )(vulgar|offensive)( |$)/;
+// Words held back by a person because their core meaning is uncertain
+const HOLDS_FILE = path.join(__dirname, "holds.json");
+const HOLDS = new Map(
+  (fs.existsSync(HOLDS_FILE) ? JSON.parse(fs.readFileSync(HOLDS_FILE, "utf-8")).words : []).map((h) => [h.word, h.reason])
+);
 
 function holdReason(entry, accepted) {
   if (hasValidExample(entry.example)) return "has a human example";
   if (accepted.has(entry.word)) return "already has an accepted AI example";
+  if (HOLDS.has(entry.word)) return `held: ${HOLDS.get(entry.word)}`;
   if (!entry.meaning) return "no core meaning";
   if (SENSITIVE.test(entry.labels || "")) return "labelled vulgar/offensive";
   if ((entry.meaningSource || "").startsWith("ecdict-order")) return "core meaning not verified (ECDICT order only)";

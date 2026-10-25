@@ -25,6 +25,19 @@ function formRegex(word) {
   return new RegExp(`(^|[^a-z])(${alts.join("|")})(?![a-z])`, "i");
 }
 
+// The meaning is visible when the translation shares a gloss, or two
+// consecutive characters of one (富幽默感的 ~ 幽默).
+function meaningVisible(translation, keys) {
+  return keys.some((k) => {
+    if (translation.includes(k)) return true;
+    for (let i = 0; i + 2 <= k.length; i++) if (translation.includes(k.slice(i, i + 2))) return true;
+    return false;
+  });
+}
+
+// Pronouns, prepositions, numbers ... are easy to get subtly wrong
+const FUNCTION_POS = /^(pron|prep|conj|art|aux|num|int|interj)\./;
+
 function checkSentence(s, word) {
   const errors = [];
   const words = s.split(/\s+/).filter(Boolean);
@@ -77,6 +90,7 @@ function validateResponse(content, items, { existing = new Set(), finishReason =
       const c = checkSentence(sentence, it.word);
       errors.push(...c.errors);
       if (!c.hasForm) flags.push("word form not found (irregular form?)");
+      if (sentence.split(/\s+/).filter(Boolean).length < 6) flags.push("short sentence: check it gives enough context");
       if (existing.has(sentence) || seen.has(sentence)) errors.push("duplicate sentence");
       seen.add(sentence);
     }
@@ -85,8 +99,9 @@ function validateResponse(content, items, { existing = new Set(), finishReason =
       errors.push(...c.errors);
       if (c.traditional) flags.push("Traditional characters in translation");
       const keys = glossKeys(it.meaning);
-      if (keys.length && !keys.some((k) => translation.includes(k))) flags.push("core meaning not visible in translation");
+      if (keys.length && !meaningVisible(translation, keys)) flags.push("core meaning not visible in translation: check the sense");
     }
+    if (FUNCTION_POS.test(it.meaning || "")) flags.push("function word: check grammar and translation closely");
     if (got.meaning_ok === false) flags.push("model says the meaning may not be a common one");
     else if (got.meaning_ok !== true) flags.push("meaning_ok missing");
 
@@ -97,4 +112,4 @@ function validateResponse(content, items, { existing = new Set(), finishReason =
   return { batchError: extra > 0 ? `${extra} extra items ignored` : "", results };
 }
 
-module.exports = { validateResponse, glossKeys, formRegex, checkSentence, checkTranslation };
+module.exports = { validateResponse, glossKeys, formRegex, checkSentence, checkTranslation, meaningVisible };

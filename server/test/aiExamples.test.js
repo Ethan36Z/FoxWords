@@ -70,8 +70,11 @@ function done(job) {
 test("pilot selection: 中考 words without examples, unverified meanings held back", () => {
   const { eligible, held } = selectWords(dictionary, [], { set: "zk-missing" });
   assert.equal(eligible.length + held.length, 147);
-  assert.equal(held.length, 25);
-  assert.ok(held.every((h) => h.reason.startsWith("core meaning not verified")));
+  assert.equal(eligible.length, 120);
+  // 24 meanings that are only ECDICT's order, and 3 words held by hand
+  assert.equal(held.filter((h) => h.reason.startsWith("core meaning not verified")).length, 24);
+  assert.deepEqual(held.filter((h) => h.reason.startsWith("held:")).map((h) => h.word).sort(), ["cheer", "hotdog", "pop"]);
+  assert.ok(eligible.some((e) => e.word === "spell")); // corrected meaning, now eligible
   assert.ok(eligible.every((e) => !e.example && e.meaning && !e.meaningSource.startsWith("ecdict-order")));
   // already accepted words are not generated again
   const again = selectWords(dictionary, [eligible[0].word], { set: "zk-missing" });
@@ -86,7 +89,11 @@ test("prompt fits the Corvus v1 contract", () => {
   const items = planOf(["apple", "river"]).items;
   const msgs = buildMessages(items);
   assert.deepEqual(msgs.map((m) => m.role), ["system", "user"]);
-  assert.match(msgs[1].content, /1\. word: apple \| meaning: n\. 苹果/);
+  assert.match(msgs[1].content, /1\. word: apple \| use as: noun \| meaning: n\. 苹果/);
+  assert.match(msgs[1].content, /Do not copy the dictionary meaning word for word/);
+  const verb = buildMessages([{ word: "swing", meaning: "vi. 摇摆", level: "中考", definition: "n. a seat hanging from ropes" }])[1].content;
+  assert.match(verb, /use as: verb/);
+  assert.doesNotMatch(verb, /seat hanging/); // the English definition may describe another sense
   assert.match(msgs[1].content, /Return exactly 2 items/);
   assert.ok(maxTokensFor(8) <= 1024 && maxTokensFor(1) >= 200);
 });
@@ -320,4 +327,22 @@ test("evaluation jobs can never be accepted", async () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("checks: short sentences and function words are flagged; natural synonyms are not", () => {
+  const { meaningVisible } = require("../aiExamples/validate");
+  assert.equal(meaningVisible("我的老师非常幽默。", ["富幽默感", "滑稽"]), true); // shares 幽默
+  assert.equal(meaningVisible("今天的天气非常适合野餐。", ["奇妙", "稀奇"]), false);
+  const items = [
+    { word: "nod", meaning: "vi. 点头", level: "中考" },
+    { word: "whom", meaning: "pron. 谁", level: "中考" },
+  ];
+  const content = JSON.stringify({ items: [
+    { id: 1, word: "nod", sentence: "He nodded to say yes.", translation: "他点头表示同意。", meaning_ok: true },
+    { id: 2, word: "whom", sentence: "The man whom I met yesterday is very nice.", translation: "我昨天遇到的那个人很好。", meaning_ok: true },
+  ] });
+  const r = validateResponse(content, items);
+  assert.deepEqual(r.results.map((x) => x.status), ["needs_review", "needs_review"]);
+  assert.match(r.results[0].flags.join(), /short sentence/);
+  assert.match(r.results[1].flags.join(), /function word/);
 });

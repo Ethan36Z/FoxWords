@@ -93,6 +93,9 @@ test("core meanings: a reviewed gold set", () => {
     many: "a. 许多的", will: "aux. 将", may: "aux. 可以", one: "n. 一(个)", stay: "vi. 停留",
     issue: "n. 发行", empty: "a. 空的", law: "n. 法律", winter: "n. 冬季", come: "vi. 来",
     download: "v. 下载", stakeholder: "n. 利益相关者", a: "art. 一个",
+    // corrected after the Phase 4B evaluation
+    airline: "n. 航空公司", weekday: "n. 平日", rubbish: "n. 垃圾", hamburger: "n. 汉堡包", dumpling: "n. 饺子",
+    clone: "n. 克隆", eraser: "n. 橡皮擦", practise: "v. 练习", spell: "vt. 拼写", pence: "pl. 便士",
   };
   const wrong = Object.entries(gold).filter(([w, m]) => !byWord.get(w).meaning.startsWith(m));
   assert.deepEqual(wrong.map(([w, m]) => `${w}: expected ${m}, got ${byWord.get(w).meaning}`), []);
