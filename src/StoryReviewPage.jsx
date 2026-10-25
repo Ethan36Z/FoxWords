@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "./apiBase";
 
+// Same as the backend default STORY_LIMIT: the newest notebook words are used
+const MAX_STORY_WORDS = 10;
+
 function StoryReviewPage() {
   const [notebook, setNotebook] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +22,7 @@ function StoryReviewPage() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(`${API_BASE}/api/notebook?limit=10&offset=0`);
+        const res = await fetch(`${API_BASE}/api/notebook?limit=${MAX_STORY_WORDS}&offset=0`);
         const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error(data?.error || "Failed to load notebook");
 
@@ -36,8 +39,9 @@ function StoryReviewPage() {
     loadNotebook();
   }, []);
 
-  // Latest 10 words (backend sorts by newest first)
-  const latestNotebook = useMemo(() => notebook.slice(0, 10), [notebook]);
+  // The newest words, at most MAX_STORY_WORDS (the backend picks the same ones)
+  const latestNotebook = useMemo(() => notebook.slice(0, MAX_STORY_WORDS), [notebook]);
+  const count = latestNotebook.length;
 
   // Show the Chinese translation, or the definition if there is none
   const pickZh = (w) => {
@@ -165,13 +169,13 @@ function StoryReviewPage() {
             <div>
               <h2 className="title">故事复习</h2>
               <p className="text-muted">
-                仅使用你最近的 <b>10</b> 个生词生成故事。
+                用你最近的 <b>{count}</b> 个生词生成故事（最多 {MAX_STORY_WORDS} 个）。
               </p>
             </div>
 
             <div className="card card--soft">
               <div className="row" style={{ justifyContent: "space-between" }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>最近的 10 个生词</h3>
+                <h3 style={{ margin: 0, fontSize: 16 }}>最近的 {count} 个生词</h3>
                 <span className="text-small">单词 · 中文/释义</span>
               </div>
 
@@ -195,7 +199,7 @@ function StoryReviewPage() {
                   onClick={handleGenerateStory}
                   disabled={generating || latestNotebook.length === 0}
                 >
-                  {generating ? "正在酝酿故事…" : "用这 10 个词生成故事"}
+                  {generating ? "正在酝酿故事…" : `用这 ${count} 个词生成故事`}
                 </button>
 
                 <button
@@ -210,7 +214,7 @@ function StoryReviewPage() {
                 {copyMsg ? <span className="text-small">{copyMsg}</span> : null}
               </div>
 
-              <span className="text-small">词太多时故事质量会下降，所以固定用 10 个。</span>
+              <span className="text-small">词太多时故事质量会下降，所以最多用 {MAX_STORY_WORDS} 个。</span>
             </div>
 
             {storyError ? (

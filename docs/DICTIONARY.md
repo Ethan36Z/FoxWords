@@ -248,7 +248,8 @@ on the next start, like any `dictionary.json` change.
 | --- | --- | --- | --- | --- |
 | 高考 (2026-10-25) | 464 | 258 | 33 | 173 |
 
-Rejected pairs stay in the candidate sheet. Doubtful core meanings found
+The filled-in review sheet, with every decision and reason, is kept in
+`server/tatoeba_reviews/gk-2026-10-25.tsv`. Rejected pairs stay there. Doubtful core meanings found
 during the review are listed in [MEANING_FLAGS.md](MEANING_FLAGS.md).
 
 ## Coverage counting
