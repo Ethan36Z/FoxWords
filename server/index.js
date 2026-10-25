@@ -5,6 +5,7 @@ const cors = require("cors");
 const db = require("./db");
 const { importDictionaryIfChanged } = require("./import_dictionary");
 const { CorvusError, corvusClientFromEnv } = require("./corvusClient");
+const { BOOKS } = require("./books");
 
 const app = express();
 
@@ -170,15 +171,6 @@ const STUDY_MIXES = ["new", "mixed", "review"];
 
 // Word books are the exam vocabularies tagged in ECDICT. Lists overlap: a
 // CET-4 word is usually also a 考研 word.
-const BOOKS = [
-  { id: "zk", title: "中考", desc: "初中阶段核心词汇" },
-  { id: "gk", title: "高考", desc: "高中阶段核心词汇" },
-  { id: "cet4", title: "大学英语四级", desc: "CET-4 考试词汇" },
-  { id: "cet6", title: "大学英语六级", desc: "CET-6 考试词汇" },
-  { id: "ky", title: "考研", desc: "研究生入学考试词汇" },
-  { id: "ielts", title: "雅思", desc: "IELTS 考试词汇" },
-  { id: "toefl", title: "托福", desc: "TOEFL 考试词汇" },
-];
 const BOOK_IDS = BOOKS.map((b) => b.id);
 // SQL condition: the dictionary row d belongs to the book bound as ?
 const IN_BOOK = "(? = '' OR (' ' || d.tags || ' ') LIKE '% ' || ? || ' %')";
