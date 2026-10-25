@@ -272,6 +272,19 @@ function SearchOverlay({ open, onClose }) {
                       {picked.exampleZh ? <div className="text-muted">{picked.exampleZh}</div> : null}
                     </div>
                   </div>
+                ) : picked.aiExample?.sentence ? (
+                  <div className="so-preview-row">
+                    <div className="so-preview-label">例句</div>
+                    <div className="so-preview-value">
+                      {picked.aiExample.sentence}
+                      {picked.aiExample.translation ? (
+                        <div className="text-muted">{picked.aiExample.translation}</div>
+                      ) : null}
+                      <span className="ai-tag ai-tag--block" title="由 Corvus AI 生成，已人工审核">
+                        Corvus · AI 生成
+                      </span>
+                    </div>
+                  </div>
                 ) : null}
 
                 <div className="so-actions">

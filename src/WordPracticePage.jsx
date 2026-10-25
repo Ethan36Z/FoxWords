@@ -10,8 +10,9 @@ import { speak } from "./speech";
   recall  ── 认识 ──▶ check   ── 下一个 (records "known") ──▶ next word
      │                  └──── 记错了 (records "unknown") ──▶ meaning
      └──── 不认识 (records "unknown") ──▶ example* ── 看释义 ──▶ meaning ── 下一个 ──▶ next word
-  * only when "先看例句" is on. Words without an example show a placeholder
-    there for now; later the AI assistant will generate one.
+  * only when "先看例句" is on and the word has an example; otherwise straight
+    to meaning. A human (Tatoeba) example wins; without one, a reviewed Corvus
+    example from the server is shown, labelled as AI. Nothing is generated here.
   太简单 (any time in recall) records "easy": the word never shows up again.
 */
 
@@ -37,6 +38,13 @@ async function postReview(word, result) {
   } catch (err) {
     console.error("Failed to save review:", err);
   }
+}
+
+// The example to show: human first, then the reviewed AI example, else null
+function exampleOf(w) {
+  if (w?.example) return { en: w.example, zh: w.exampleZh, ai: false };
+  if (w?.aiExample?.sentence) return { en: w.aiExample.sentence, zh: w.aiExample.translation, ai: true };
+  return null;
 }
 
 // Wrap the studied word (and simple forms like "apples") in <mark>
@@ -117,7 +125,7 @@ function WordPracticePage() {
     if (!current) return;
     postReview(current.word, "unknown");
     setRound((r) => ({ ...r, unknown: r.unknown + 1 }));
-    setPhase(settings.exampleFirst && phase === "recall" ? "example" : "meaning");
+    setPhase(settings.exampleFirst && phase === "recall" && exampleOf(current) ? "example" : "meaning");
   };
 
   const markTooEasy = () => {
@@ -307,8 +315,8 @@ function WordPracticePage() {
   }
 
   // ===================== Card =====================
-  // With 先看例句 on, the example block always shows (placeholder if missing)
-  const showExample = phase !== "recall" && (settings.exampleFirst || Boolean(current.example));
+  const example = exampleOf(current);
+  const showExample = phase !== "recall" && Boolean(example);
   const showMeaning = phase === "check" || phase === "meaning";
   const progress = ((index + 1) / words.length) * 100;
 
@@ -387,25 +395,23 @@ function WordPracticePage() {
 
           {showExample && (
             <div className="wp-section">
-              <div className="wp-label">例句</div>
-              {current.example ? (
-                <div className="wp-box wp-example">
-                  <div className="wp-example__en">
-                    <span>
-                      <Highlight text={current.example} word={current.word} />
-                    </span>
-                    <SpeakButton text={current.example} label="朗读例句" size="sm" rate={0.85} />
-                  </div>
-                  {showMeaning && current.exampleZh ? (
-                    <div className="wp-example__zh">{current.exampleZh}</div>
-                  ) : null}
+              <div className="wp-label">
+                例句
+                {example.ai ? (
+                  <span className="ai-tag" title="由 Corvus AI 生成，已人工审核">
+                    Corvus · AI 生成
+                  </span>
+                ) : null}
+              </div>
+              <div className="wp-box wp-example">
+                <div className="wp-example__en">
+                  <span>
+                    <Highlight text={example.en} word={current.word} />
+                  </span>
+                  <SpeakButton text={example.en} label="朗读例句" size="sm" rate={0.85} />
                 </div>
-              ) : (
-                // TODO: ask the AI assistant to generate an example here once it exists
-                <div className="wp-box wp-example wp-example--empty">
-                  这个词还没有例句，之后会由 AI 自动生成。
-                </div>
-              )}
+                {showMeaning && example.zh ? <div className="wp-example__zh">{example.zh}</div> : null}
+              </div>
             </div>
           )}
 

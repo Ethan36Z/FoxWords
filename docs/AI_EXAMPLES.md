@@ -149,8 +149,11 @@ So after a dictionary rebuild:
 
 The dictionary import never touches the table.
 
-The flashcard UI does not show `aiExample` yet. Showing it, labelled
-"Corvus · AI 生成", is a separate UI decision.
+The flashcard shows `aiExample` in its example section, the same place and
+style as a human example, with a small "Corvus · AI 生成" label; the
+dictionary search preview does the same. A human example always wins. A word
+with neither has no example section, and with 先看例句 on the card goes
+straight to the meaning instead of an empty example step.
 
 ## Workload
 
@@ -179,8 +182,8 @@ with no failures: 4.8 s per request, 65 output tokens per word, 120 words in
 
 `server/ai_examples.json` holds the 114 accepted examples, reviewer `ethan`.
 `whom` is held for a hand-written example. The other rejected words are not
-held, so a later run may regenerate them. The flashcard UI does not show
-`aiExample` yet (Phase 5).
+held, so a later run may regenerate them. Phase 5 shows them on the
+flashcards.
 
 ## Pilot (as prepared)
 
