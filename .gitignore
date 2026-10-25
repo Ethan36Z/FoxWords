@@ -44,3 +44,6 @@ old_code/
 
 # Downloaded dictionary sources (see docs/STARTUP.md)
 server/.dict-src/
+
+# Python bytecode from the dictionary build scripts
+__pycache__/

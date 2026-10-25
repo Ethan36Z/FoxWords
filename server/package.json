@@ -7,7 +7,8 @@
     "start": "node index.js",
     "dev": "node index.js",
     "import:dict": "node import_dictionary.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:dict": "python3 -I -B -m unittest discover -s test -p \"test_*.py\""
   },
   "keywords": [],
   "author": "",

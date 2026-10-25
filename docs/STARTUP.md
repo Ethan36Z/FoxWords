@@ -49,10 +49,13 @@ mkdir -p .dict-src/ecdict .dict-src/tatoeba
 curl -L -o .dict-src/ecdict/ecdict.csv https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv
 curl -L -o .dict-src/tatoeba/cmn-eng.zip https://www.manythings.org/anki/cmn-eng.zip
 unzip -o .dict-src/tatoeba/cmn-eng.zip -d .dict-src/tatoeba
-python3 -I build_dictionary.py .dict-src/ecdict/ecdict.csv .dict-src/tatoeba/cmn.txt dictionary.json
+cp dictionary.json .dict-src/previous.json
+python3 -I -B build_dictionary.py .dict-src/ecdict/ecdict.csv .dict-src/tatoeba/cmn.txt dictionary.json \
+  --previous .dict-src/previous.json --report dictionary.build.json
+python3 -I -B dictionary_audit.py .dict-src/ecdict/ecdict.csv dictionary.json .dict-src/previous.json > .dict-src/audit.json
 ```
 
-脚本会收录带考试标签（中考、高考、四级、六级、考研、雅思、托福）的全部单词，去掉 went、apples 这类变形词，按难度和词频排序。每个词配一条 5–14 个词的例句，只用有简体中文翻译的句子。目前约 31% 的词有例句，其余可以以后用 AI 生成。
+收录规则、人工修正（`dictionary_overrides.json`）和覆盖率统计口径见 [DICTIONARY.md](DICTIONARY.md)。`--previous` 让已有例句保持不变；没有 Tatoeba 文件时可以用 `-` 代替 `cmn.txt`，新词就暂时没有例句。`dictionary.build.json` 记录数据源哈希、各收录原因的词数以及新增/删除的词。规则测试：`npm --prefix server run test:dict`（Python）和 `npm --prefix server test`（Node）。
 
 启动两个终端：
 
