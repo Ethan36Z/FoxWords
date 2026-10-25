@@ -13,6 +13,8 @@ import { speak } from "./speech";
   * only when "先看例句" is on and the word has an example; otherwise straight
     to meaning. A human (Tatoeba) example wins; without one, a reviewed Corvus
     example from the server is shown, labelled as AI. Nothing is generated here.
+  check and meaning are the final reveal: meaning, example and its Chinese
+  translation together. Every path that answers a word reaches one of them.
   太简单 (any time in recall) records "easy": the word never shows up again.
 */
 
@@ -456,15 +458,12 @@ function WordPracticePage() {
               </>
             )}
 
+            {/* No "next" here: after the example the card always reveals the
+                meaning, the example and its translation together */}
             {phase === "example" && (
-              <>
-                <button className="btn btn-secondary btn-lg" onClick={goNext}>
-                  下一个
-                </button>
-                <button className="btn btn-primary btn-lg" onClick={() => setPhase("meaning")}>
-                  看释义 <kbd className="kbd kbd--on-accent">␣</kbd>
-                </button>
-              </>
+              <button className="btn btn-primary btn-lg wp-answer__full" onClick={() => setPhase("meaning")}>
+                看释义 <kbd className="kbd kbd--on-accent">␣</kbd>
+              </button>
             )}
 
             {phase === "meaning" && (
