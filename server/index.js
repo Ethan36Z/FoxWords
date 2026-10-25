@@ -1,19 +1,28 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios");
 
 const db = require("./db");
 const { importDictionaryIfChanged } = require("./import_dictionary");
+const { CorvusError, corvusClientFromEnv } = require("./corvusClient");
 
 const app = express();
 
 // Environment config
 const PORT = Number(process.env.PORT || 4000);
-const LLAMA_SERVER_URL = (process.env.LLAMA_SERVER_URL || "http://llama-server:8080").replace(/\/$/, "");
-const LLAMA_MODEL = process.env.LLAMA_MODEL || "foxwords";
-const LLAMA_TIMEOUT_MS = Math.max(1000, Number(process.env.LLAMA_TIMEOUT_MS || 120000));
 const STORY_LIMIT = Math.max(1, Math.min(Number(process.env.STORY_LIMIT || 10), 30));
+
+// One shared Corvus API v1 client for every AI feature (one request at a time).
+const corvus = corvusClientFromEnv();
+
+function sendAiError(res, err, fallbackMessage) {
+  if (err instanceof CorvusError) {
+    if (err.retryAfter) res.set("Retry-After", String(err.retryAfter));
+    return res.status(err.status).json({ error: err.message, code: err.code });
+  }
+  console.error("AI request failed:", err && err.name);
+  return res.status(500).json({ error: fallbackMessage });
+}
 
 app.use(cors());
 app.use(express.json());
@@ -103,7 +112,7 @@ app.delete("/api/notebook/:id", (req, res) => {
   }
 });
 
-// -------------------- story (Latest N notebook -> llama-server) --------------------
+// -------------------- story (Latest N notebook -> Corvus) --------------------
 app.post("/api/story", async (req, res) => {
   try {
     // ✅ 不依赖前端 words，直接取 notebook 最新 N 个
@@ -138,34 +147,20 @@ Highlight these words in the story like: *apple*.
 After the English story, also give a brief Chinese summary (1-2 sentences).
 `;
 
-    const llamaResponse = await axios.post(
-      `${LLAMA_SERVER_URL}/v1/chat/completions`,
-      {
-        model: LLAMA_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        stream: false,
-      },
-      { timeout: LLAMA_TIMEOUT_MS }
-    );
+    const result = await corvus.chat({
+      feature: "story",
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: 512,
+    });
 
-    const storyText = llamaResponse.data?.choices?.[0]?.message?.content || "";
+    const storyText = result.content || "";
     if (!storyText.trim()) {
-      return res.status(500).json({ error: "LLM returned empty story" });
+      return res.status(502).json({ error: "AI 没有生成故事，请重试。" });
     }
 
     res.json({ story: storyText });
   } catch (err) {
-    console.error("Failed to create story with LLM:", err);
-    if (axios.isAxiosError(err)) {
-      const upstreamStatus = err.response?.status;
-      if (upstreamStatus === 400 || upstreamStatus === 404 || upstreamStatus === 503) {
-        return res.status(503).json({ error: "LLM is unavailable or still loading" });
-      }
-      if (err.code === "ECONNABORTED" || !err.response) {
-        return res.status(503).json({ error: "LLM service is unavailable" });
-      }
-    }
-    res.status(500).json({ error: "failed to create story" });
+    sendAiError(res, err, "failed to create story");
   }
 });
 
@@ -479,9 +474,8 @@ if (require.main === module) {
 
   app.listen(PORT, () => {
     console.log(`FoxWords backend running on port ${PORT}`);
-    console.log("LLAMA_SERVER_URL:", LLAMA_SERVER_URL);
-    console.log("LLAMA_MODEL:", LLAMA_MODEL);
     console.log("STORY_LIMIT:", STORY_LIMIT);
+    console.log("Corvus AI configured:", corvus.isConfigured());
   });
 }
 

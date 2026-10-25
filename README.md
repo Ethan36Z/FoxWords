@@ -1,6 +1,6 @@
 # FoxWords 🦊
 
-FoxWords is a small Chinese-English vocabulary learning web app. It combines a React/Vite frontend with an Express backend, SQLite persistence, and optional local story generation through llama.cpp's `llama-server`.
+FoxWords is a small Chinese-English vocabulary learning web app. It combines a React/Vite frontend with an Express backend, SQLite persistence, and AI story generation through the Corvus API v1.
 
 ## Features
 
@@ -12,16 +12,32 @@ FoxWords is a small Chinese-English vocabulary learning web app. It combines a R
 - Word and example pronunciation through the browser's built-in speech synthesis
 - Settings in two drawers: Appearance (font size; day, night and eye-care themes; day/night can follow the system) and Study (daily goal up to 500, study mix, example-first)
 - Static pattern practice content
-- Optional story generation from recent notebook words
+- Story generation from recent notebook words (Corvus API v1)
 
-Story generation is the only feature that requires a running AI model. The backend sends an OpenAI-compatible request to `llama-server` and returns the generated English story and Chinese summary. Other pages can be used without making an AI generation request.
+## AI (Corvus API v1)
+
+Story generation is the only AI feature. Only the backend talks to Corvus,
+through `server/corvusClient.js`; the browser never sees the Corvus address or
+key. Every AI feature shares this one client: one request at a time, a local
+per-minute budget (default 4, never above the Corvus limit of 6), a cooldown
+after a Corvus 429, and no automatic retries.
+
+| Variable | Meaning |
+| --- | --- |
+| `CORVUS_API_BASE_URL` | e.g. `https://api-corvus.foxluma.com/v1` (HTTPS required, except loopback) |
+| `CORVUS_API_KEY_FILE` | file containing only the key; re-read on every request |
+| `CORVUS_TIMEOUT_MS` | default 100000 (Corvus answers or fails within 90 s) |
+| `CORVUS_MAX_PER_MINUTE` | default 4 |
+
+Without a configured URL and key, `POST /api/story` returns 503 and everything
+else works normally.
 
 ## Stack
 
 - Frontend: React, Vite, React Router
-- Backend: Node.js, Express, Axios, better-sqlite3
+- Backend: Node.js, Express, better-sqlite3
 - Data: one SQLite database for the notebook, dictionary and settings
-- Model service: llama.cpp `server-cuda` image with NVIDIA CUDA support
+- AI: Corvus API v1 (text, non-streaming, stateless)
 
 ## Development
 

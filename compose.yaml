@@ -28,17 +28,20 @@ services:
       PORT: "4000"
       DB_FILE: /data/foxwords.db
       SETTINGS_FILE: /data/settings.json
-      LLAMA_SERVER_URL: http://llama-server:8080
-      LLAMA_MODEL: ${LLAMA_MODEL:-foxwords}
-      LLAMA_TIMEOUT_MS: ${LLAMA_TIMEOUT_MS:-120000}
       STORY_LIMIT: ${STORY_LIMIT:-10}
+      # Corvus API v1. The key is a file secret, never an environment value.
+      CORVUS_API_BASE_URL: ${CORVUS_API_BASE_URL:-}
+      CORVUS_API_KEY_FILE: /run/secrets/corvus_api_key
+      CORVUS_TIMEOUT_MS: ${CORVUS_TIMEOUT_MS:-100000}
+      CORVUS_MAX_PER_MINUTE: ${CORVUS_MAX_PER_MINUTE:-4}
     volumes:
       - ./data:/data
-    depends_on:
-      llama-server:
-        condition: service_healthy
+    secrets:
+      - corvus_api_key
     networks:
       - foxwords_private
+      # Outbound HTTPS to the Corvus API edge. No ports are published.
+      - foxwords_egress
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
@@ -46,12 +49,15 @@ services:
       retries: 3
       start_period: 10s
 
+  # Legacy local model. Not used by the backend since the Corvus integration;
+  # starts only with `--profile local-llm`.
   llama-server:
+    profiles: ["local-llm"]
     image: ${LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
     restart: unless-stopped
     command:
       - -m
-      - /models/${LLAMA_MODEL_FILE:?Set LLAMA_MODEL_FILE in .env.deploy}
+      - /models/${LLAMA_MODEL_FILE:-unset.gguf}
 
       - --alias
       - ${LLAMA_MODEL:-foxwords}
@@ -79,5 +85,11 @@ services:
 
 networks:
   foxwords_edge: {}
+  foxwords_egress: {}
   foxwords_private:
     internal: true
+
+secrets:
+  corvus_api_key:
+    # Host path of the FoxWords Corvus key (mode 0600, outside this repo).
+    file: ${CORVUS_API_KEY_HOST_FILE:?Set CORVUS_API_KEY_HOST_FILE in .env.deploy}

@@ -4,14 +4,13 @@
 
 ## 当前架构
 
-本地开发时，Vite frontend 请求 Express backend；生产部署时，浏览器只访问 frontend/Nginx，Nginx 将 `/api/` 代理到 backend。需要生成故事时，backend 再通过 OpenAI-compatible API 请求 `llama-server`，由 NVIDIA GPU 执行推理。
+本地开发时，Vite frontend 请求 Express backend；生产部署时，浏览器只访问 frontend/Nginx，Nginx 将 `/api/` 代理到 backend。需要生成故事时，backend 通过 HTTPS 调用 Corvus API v1（`server/corvusClient.js`）。浏览器不接触 Corvus 地址和密钥。
 
 ```text
 Browser
   → frontend / Nginx
   → Express backend
-  → llama-server
-  → NVIDIA GPU
+  → Corvus API v1（https://api-corvus.foxluma.com/v1）
 ```
 
 项目主要组成：
@@ -20,7 +19,8 @@ Browser
 - `server/index.js`：Express API、demo login、story generation 和 settings API
 - `server/db.js`：SQLite 初始化及数据库连接
 - `server/dictionary.json`：词典数据（约 1 万词，含音标和部分例句），由 `server/build_dictionary.py` 生成
-- `compose.yaml`：Home Server 三服务部署
+- `server/corvusClient.js`：所有 AI 功能共用的 Corvus API v1 客户端
+- `compose.yaml`：Home Server 部署（frontend + backend；llama-server 仅作为可选 profile 保留）
 
 ## 本地开发
 
@@ -104,23 +104,24 @@ npm --prefix server test
 
 ```text
 PORT=4000
-LLAMA_SERVER_URL=http://localhost:8080
-LLAMA_MODEL=foxwords
-LLAMA_TIMEOUT_MS=120000
+CORVUS_API_BASE_URL=https://api-corvus.foxluma.com/v1
+CORVUS_API_KEY_FILE=/path/outside/repo/corvus_api_key
+CORVUS_TIMEOUT_MS=100000
+CORVUS_MAX_PER_MINUTE=4
 STORY_LIMIT=10
 ```
 
-`LLAMA_SERVER_URL` 默认值是容器网络中的 `http://llama-server:8080`，因此本地直接运行 backend 时，如果本机另有 llama-server，应明确设置本地地址。`LLAMA_MODEL` 用于 OpenAI-compatible 请求中的 model 字段；`STORY_LIMIT` 控制故事使用的最新 notebook 单词数，范围为 1 到 30。
+密钥只放在 `CORVUS_API_KEY_FILE` 指向的文件里（只含密钥，权限 0600，不在仓库内），不要写进 `.env`。未配置时故事接口返回 503，其他功能不受影响。`STORY_LIMIT` 控制故事使用的最新 notebook 单词数，范围为 1 到 30。
 
 ### 哪些功能需要模型
 
 Story 页面调用 `POST /api/story` 时，backend 请求：
 
 ```text
-${LLAMA_SERVER_URL}/v1/chat/completions
+${CORVUS_API_BASE_URL}/chat/completions
 ```
 
-需要 notebook 中至少有一个单词，并且 llama-server 已启动且已加载模型。模型未启动、仍在加载、连接失败或超时，backend 会返回错误响应。
+需要 notebook 中至少有一个单词，并且已配置 Corvus。Corvus 同时只处理一个请求、全局每分钟最多 6 次；忙时返回 429（带 Retry-After），不可用或超时返回 503。backend 不会自动重试。
 
 登录、Home、Books、Study、Notebook、Patterns、Settings 和字典搜索不需要实际生成请求；Study / Search 仍需要 SQLite 中已有词典数据。
 
@@ -139,13 +140,13 @@ Password: 123456
 /home/ethan/srv/apps/foxwords
 ```
 
-模型目录：
+Corvus 密钥文件（示例路径，由运维准备，不在仓库内）：
 
 ```text
-/home/ethan/srv/shared/models/
+/home/ethan/srv/secrets/foxwords/corvus_api_key
 ```
 
-当前示例模型文件名为 `Qwen3-8B-Q4_K_M.gguf`。文件由部署者准备；本项目不会下载模型。Compose 将模型目录只读挂载到 llama-server 容器的 `/models`。
+Compose 把它作为 secret 只读挂载到 backend 的 `/run/secrets/corvus_api_key`。
 
 ### 网络与端口
 
@@ -155,11 +156,11 @@ Password: 123456
 127.0.0.1:8084 → frontend container port 80
 ```
 
-frontend 同时连接 `foxwords_edge` 和 `foxwords_private`；backend 和 llama-server 只连接 `foxwords_private`。`foxwords_private` 是 internal network。backend 的 4000 和 llama-server 的 8080 均不发布到宿主机。Nginx 的 `/api/` 反向代理目标是 `backend:4000`，生产 frontend 使用同源 `/api`。
+frontend 同时连接 `foxwords_edge` 和 `foxwords_private`；backend 连接 `foxwords_private` 和用于访问 Corvus HTTPS 的 `foxwords_egress`。`foxwords_private` 是 internal network。backend 的 4000 不发布到宿主机。Nginx 的 `/api/` 反向代理目标是 `backend:4000`，生产 frontend 使用同源 `/api`。
 
 ### 环境文件和启动
 
-不要把部署环境文件加入 Git。复制示例并填写实际 GGUF 文件名：
+不要把部署环境文件加入 Git。复制示例并填写 Corvus 配置：
 
 ```bash
 cd /home/ethan/srv/apps/foxwords
@@ -169,13 +170,11 @@ cp .env.deploy.example .env.deploy
 至少确认：
 
 ```text
-LLAMA_MODEL_FILE=Qwen3-8B-Q4_K_M.gguf
-LLAMA_MODEL=foxwords
+CORVUS_API_BASE_URL=https://api-corvus.foxluma.com/v1
+CORVUS_API_KEY_HOST_FILE=/home/ethan/srv/secrets/foxwords/corvus_api_key
 ```
 
-`LLAMA_IMAGE` 可用于固定 llama.cpp image/tag；GPU offload、context、并行数和 timeout 也可以通过示例中的环境变量调整。不要在该文件中写入 secrets。
-
-模型准备好后启动：
+不要在该文件中写入密钥本身。启动前先备份 `data/foxwords.db`。启动：
 
 ```bash
 docker compose --env-file .env.deploy up -d --build
@@ -185,14 +184,13 @@ docker compose --env-file .env.deploy up -d --build
 
 ```bash
 docker compose --env-file .env.deploy ps
-docker compose --env-file .env.deploy logs -f frontend backend llama-server
+docker compose --env-file .env.deploy logs -f frontend backend
 ```
 
-本阶段没有模型时，不要启动完整推理服务；只可先检查 Compose 配置：
+只检查 Compose 配置（不启动服务）：
 
 ```bash
-LLAMA_MODEL_FILE=validation-placeholder.gguf \
-  docker compose --env-file .env.deploy.example config
+CORVUS_API_KEY_HOST_FILE=/dev/null docker compose --env-file .env.deploy.example config -q
 ```
 
 ### Docker 持久化
@@ -209,5 +207,5 @@ Compose 将项目目录下的 `./data` 挂载到 backend 的 `/data`：
 - 登录或 API 请求失败：确认 backend 已启动，并检查 `GET /api/health`。
 - Study / 搜索没有词：运行 `npm run import:dict`。
 - 单词发音没有声音：发音用的是浏览器自带的语音合成，请确认系统里装了英文语音（macOS：系统设置 → 辅助功能 → 朗读内容）。
-- Story 失败：确认 notebook 非空、`LLAMA_SERVER_URL` 可访问、`LLAMA_MODEL` 与 llama-server 的 model alias 一致，并等待模型完成加载。
+- Story 失败：确认 notebook 非空、已配置 `CORVUS_API_BASE_URL` 和密钥文件；429 表示 Corvus 正忙，按提示稍后重试；backend 日志中的 `[corvus] ... status=` 行给出上游状态（不含密钥）。
 - 本地端口冲突：通过 `PORT` 修改 backend 端口；Vite 会提示可用端口。
