@@ -171,6 +171,57 @@ Examples come from Tatoeba. With `--previous`, a word keeps the example it
 already had. New words get a Tatoeba example when `cmn.txt` is supplied, and
 none otherwise.
 
+### Candidates from the official Tatoeba export
+
+`cmn.txt` (manythings.org) is a filtered subset of Tatoeba, about 32,000
+pairs. The official export has about 78,000 English–Chinese pairs.
+`server/tatoebaExamples.js` turns it into a **review sheet** for words that
+have no example yet. It changes nothing else.
+
+```bash
+# inside server/; the files come from https://downloads.tatoeba.org/exports/
+#   per_language/eng/eng_sentences_detailed.tsv.bz2
+#   per_language/cmn/cmn_sentences_detailed.tsv.bz2
+#   per_language/cmn/cmn-eng_links.tsv.bz2
+#   user_languages.tar.bz2 (optional: native-speaker column)
+cd .dict-src/tatoeba-official && bunzip2 -k *.bz2 && cd ../..
+node tatoebaExamples.js --data .dict-src/tatoeba-official --book gk   # --sample 100 --seed 20261025
+```
+
+The output goes to `.ai-work/tatoeba/` (not committed):
+- `<book>-candidates.tsv`: one row per word, the best pair;
+- `<book>-sample100.tsv`: a reproducible sample;
+- `<book>-summary.json`: counts and input hashes.
+
+The first ten columns are the AI review columns (`decision` and so on). The
+others keep the source: `eng_id`, `cmn_id`, `eng_author`, `cmn_author`,
+`license` (CC BY 2.0 FR), plus review hints.
+
+**Which words.** The same rule as AI examples: no human example, no accepted
+AI example, not held, a verified core meaning, not vulgar or offensive.
+
+**Which pairs.**
+- The English contains the word or a regular form of it.
+- The English passes the AI sentence checks and has 5–14 words.
+- The Chinese is Simplified: every character is in GB2312, the same rule as
+  the build.
+- The sentence is not already an example anywhere, and is offered for one
+  word only.
+
+**Order.** For each word, pairs are ordered by:
+1. the core gloss is visible in the Chinese;
+2. no sensitive-topic words and no unknown names (real people?);
+3. fewer words above the book's level;
+4. native speakers;
+5. a length near 9 words.
+
+**`match` is a hint, not a check.**
+- `form`: only the word form matched.
+- `form+gloss`: the Chinese also contains a core gloss.
+
+Neither proves the sentence uses the word in the target sense. Every row is
+`needs_review`, and nothing is imported until a separate, approved step.
+
 ## Coverage counting
 
 `server/dictionary_audit.py` produces every coverage number.
