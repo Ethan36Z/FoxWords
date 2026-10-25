@@ -165,7 +165,24 @@ Requests at 4 per minute, before retries (expect 10–20% more):
 These times assume each request finishes within 15 s. Real Qwen latency for 4
 or 8 items is measured in the evaluation run.
 
-## Pilot (prepared, not run)
+## Pilot result (Phase 4D, 2026-10-25)
+
+The 中考 pilot (`pilot-zk`, prompt `example-v4`, batch size 4) ran 30 requests
+with no failures: 4.8 s per request, 65 output tokens per word, 120 words in
+7.6 minutes. Every example was reviewed:
+
+| Decision | Words |
+| --- | --- |
+| Accepted unchanged | 98 |
+| Accepted with edits (reason in `note`) | 16 |
+| Rejected (development, heaven, madame, proper, railway, whom) | 6 |
+
+`server/ai_examples.json` holds the 114 accepted examples, reviewer `ethan`.
+`whom` is held for a hand-written example. The other rejected words are not
+held, so a later run may regenerate them. The flashcard UI does not show
+`aiExample` yet (Phase 5).
+
+## Pilot (as prepared)
 
 1. `plan --job pilot-zk` freezes the 120 words and writes `meanings.tsv`: the
    part of speech and meaning each example will be written for. Check it
