@@ -186,6 +186,43 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(len(rec["problems"]), 1)  # the stale apple phonetic fix is reported, not applied
             self.assertIn("apple", rec["problems"][0])
 
+    def test_reviewed_examples_fill_only_words_without_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            import csv
+            csv_path = os.path.join(d, "ecdict.csv")
+            fields = ["word", "phonetic", "definition", "translation", "pos", "collins", "oxford", "tag", "bnc", "frq", "exchange", "detail", "audio"]
+            rows = [
+                {"word": "apple", "translation": "n. 苹果", "tag": "zk", "exchange": "s:apples"},
+                {"word": "stair", "translation": "n. 楼梯", "tag": "gk"},
+                {"word": "river", "translation": "n. 河", "tag": "zk"},
+            ]
+            with open(csv_path, "w", encoding="utf-8", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=fields)
+                w.writeheader()
+                for r in rows:
+                    w.writerow({k: r.get(k, "") for k in fields})
+            prev = os.path.join(d, "prev.json")
+            with open(prev, "w", encoding="utf-8") as f:
+                json.dump([{"word": "apple", "example": "I like apples.", "exampleZh": "我喜欢苹果。"}], f)
+            examples = os.path.join(d, "reviewed.json")
+            with open(examples, "w", encoding="utf-8") as f:
+                json.dump([
+                    {"word": "apple", "sentence": "An apple a day keeps the doctor away.", "translation": "一天一苹果。"},
+                    {"word": "stair", "sentence": "He ran down the stairs quickly.", "translation": "他飞快地跑下楼梯。"},
+                    {"word": "river", "sentence": "The water is very cold today.", "translation": "今天水很冷。"},
+                ], f)
+            out = os.path.join(d, "out.json")
+            rec = b.build(csv_path, "-", out, previous_path=prev, examples_path=examples)
+            with open(out, encoding="utf-8") as f:
+                data = {e["word"]: e for e in json.load(f)}
+            self.assertEqual(data["apple"]["example"], "I like apples.")  # an existing example is never replaced
+            self.assertEqual(data["stair"]["example"], "He ran down the stairs quickly.")  # regular plural
+            self.assertEqual(data["stair"]["exampleZh"], "他飞快地跑下楼梯。")
+            self.assertEqual(data["river"]["example"], "")  # the word is not in the sentence: reported, not used
+            self.assertEqual(rec["examples_from_reviewed"], 1)
+            self.assertEqual(len(rec["problems"]), 1)
+            self.assertIn("river", rec["problems"][0])
+
 
 class ReproducibilityTests(unittest.TestCase):
     def test_same_output_with_different_hash_seeds(self):

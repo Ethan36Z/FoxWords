@@ -168,7 +168,8 @@ Choosing one modern IPA standard is a separate decision.
 ## Examples
 
 Examples come from Tatoeba. With `--previous`, a word keeps the example it
-already had. New words get a Tatoeba example when `cmn.txt` is supplied, and
+already had. Next come reviewed examples from `tatoeba_examples.json` (see
+below). Other new words get a Tatoeba example when `cmn.txt` is supplied, and
 none otherwise.
 
 ### Candidates from the official Tatoeba export
@@ -220,7 +221,35 @@ AI example, not held, a verified core meaning, not vulgar or offensive.
 - `form+gloss`: the Chinese also contains a core gloss.
 
 Neither proves the sentence uses the word in the target sense. Every row is
-`needs_review`, and nothing is imported until a separate, approved step.
+`needs_review`.
+
+**Accepting.** Fill in `decision` (accept | edit | reject; corrections go in
+`sentence_fix` / `translation_fix`), then run:
+
+```bash
+node tatoebaExamples.js --accept .ai-work/tatoeba/gk-review.tsv --reviewer NAME --data .dict-src/tatoeba-official
+```
+
+For every kept row, it checks again that:
+- the ids still point to the same Tatoeba sentences;
+- the word still has no human or AI example;
+- the (possibly edited) text passes the checks.
+
+Any error means nothing is written. Accepted rows go to
+`server/tatoeba_examples.json` (committed), with ids, authors, licence, and
+the original text of edited rows.
+
+**Build.** `build_dictionary.py` reads `tatoeba_examples.json` by default
+(`--examples` to choose another file). A reviewed example fills a word that
+has no example yet; it never replaces one. The database picks the change up
+on the next start, like any `dictionary.json` change.
+
+| Book | Reviewed | Accepted | Edited | Rejected |
+| --- | --- | --- | --- | --- |
+| 高考 (2026-10-25) | 464 | 258 | 33 | 173 |
+
+Rejected pairs stay in the candidate sheet. Doubtful core meanings found
+during the review are listed in [MEANING_FLAGS.md](MEANING_FLAGS.md).
 
 ## Coverage counting
 

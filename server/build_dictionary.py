@@ -16,6 +16,7 @@ Usage:
   python3 -I build_dictionary.py <ecdict.csv> <cmn.txt | -> [output.json] [max_words]
       [--previous dictionary.json] [--overrides dictionary_overrides.json]
       [--report dictionary.build.json] [--cmudict cmudict.dict] [--wordnet index.sense]
+      [--examples tatoeba_examples.json]
 
   --previous   keep the example sentence of every word that already had one
                there, so a rebuild does not reshuffle examples learners know.
@@ -23,6 +24,9 @@ Usage:
   --overrides  versioned manual corrections applied after the rules
                (default: dictionary_overrides.json next to this script).
   --report     where to write the build record (sources, counts, changes).
+  --examples   reviewed Tatoeba examples (tatoebaExamples.js --accept), used for
+               words that have no example yet (default: tatoeba_examples.json
+               next to this script). They win over automatic choices from cmn.txt.
 
 Which words are included (see docs/DICTIONARY.md for the reasoning):
   1. Lemmas with an exam tag (中考 ... 托福), as before.
@@ -514,7 +518,7 @@ def load_tatoeba_pairs(path):
 
 
 def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=None,
-          overrides_path=None, report_path=None, cmudict_path=None, wordnet_path=None):
+          overrides_path=None, report_path=None, cmudict_path=None, wordnet_path=None, examples_path=None):
     rows = load_rows(ecdict_path)
     overrides = {}
     if overrides_path and os.path.exists(overrides_path):
@@ -598,6 +602,23 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
             e["example"], e["exampleZh"] = old["example"], old.get("exampleZh", "")
             used[e["example"]] = used.get(e["example"], 0) + 1
             kept += 1
+    reviewed = {}
+    if examples_path and os.path.exists(examples_path):
+        with open(examples_path, encoding="utf-8") as f:
+            reviewed = {x["word"]: x for x in json.load(f)}
+    from_reviewed = 0
+    for e in entries:
+        x = reviewed.get(e["word"])
+        if e.get("example") or not x:
+            continue
+        w = e["word"].lower()
+        regular = {w + "s", w + "es", w + "ed", w + "d", w + "ing"}  # stairs: ECDICT lists no plural
+        if not (e["_forms"] | regular) & set(WORD_RE.findall(x["sentence"].lower())):
+            problems.append(f"reviewed example for {e['word']} does not contain the word")
+            continue
+        e["example"], e["exampleZh"] = x["sentence"], x["translation"]
+        used[x["sentence"]] = used.get(x["sentence"], 0) + 1
+        from_reviewed += 1
     for e in entries:
         if e.get("example"):
             continue
@@ -631,12 +652,14 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
             "cmudict_sha256": sha256(cmudict_path) if cmudict_path else None,
             "wordnet_index_sense_sha256": sha256(wordnet_path) if wordnet_path else None,
             "previous_sha256": sha256(previous_path) if previous_path else None,
+            "examples_sha256": sha256(examples_path) if reviewed else None,
         },
         "overrides_version": overrides.get("version"),
         "freq_rank_limit": FREQ_RANK_LIMIT,
         "words": len(out),
         "with_example": sum(1 for w in out if w["example"]),
         "examples_kept_from_previous": kept,
+        "examples_from_reviewed": from_reviewed,
         "with_phonetic": sum(1 for w in out if w["phonetic"]),
         "by_reason": reasons,
         "meaning_source": count("meaningSource"),
@@ -656,7 +679,8 @@ def build(ecdict_path, tatoeba_path, out_path, max_words=None, previous_path=Non
 
 
 def main(argv):
-    flags = {"--previous": None, "--overrides": None, "--report": None, "--cmudict": None, "--wordnet": None}
+    flags = {"--previous": None, "--overrides": None, "--report": None, "--cmudict": None, "--wordnet": None,
+             "--examples": None}
     positional = []
     i = 0
     while i < len(argv):
@@ -674,10 +698,12 @@ def main(argv):
     max_words = int(positional[3]) if len(positional) > 3 else None
     overrides_path = flags["--overrides"] or os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                           "dictionary_overrides.json")
+    examples_path = flags["--examples"] or os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                        "tatoeba_examples.json")
     record = build(ecdict_path, tatoeba_path, out_path, max_words, flags["--previous"],
-                   overrides_path, flags["--report"], flags["--cmudict"], flags["--wordnet"])
+                   overrides_path, flags["--report"], flags["--cmudict"], flags["--wordnet"], examples_path)
     print(f"words: {record['words']}  with example: {record['with_example']} "
-          f"(kept {record['examples_kept_from_previous']})  with phonetic: {record['with_phonetic']}")
+          f"(kept {record['examples_kept_from_previous']}, reviewed {record['examples_from_reviewed']})  with phonetic: {record['with_phonetic']}")
     print("by reason:", record["by_reason"])
     print("meaning source:", record["meaning_source"])
     print("phonetic source:", record["phonetic_source"])

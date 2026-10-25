@@ -119,3 +119,41 @@ test("loads the official export format", async () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("accept: decisions are applied, ids kept, and any error writes nothing", () => {
+  const { applyReview, COLUMNS: cols } = require("../tatoebaExamples");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foxwords-tatoeba-accept-"));
+  try {
+    const { rows } = buildCandidates(dictionary, pairs, { book: "gk" });
+    const tsv = (list) => [cols.join("\t"), ...list.map((r) => cols.map((c) => r[c] ?? "").join("\t"))].join("\n") + "\n";
+    const decided = rows.map((r) =>
+      r.word === "harvest" ? { ...r, decision: "accept" }
+        : r.word === "tidy" ? { ...r, decision: "edit", translation_fix: "她每天都把房间收拾得整整齐齐。", note: "more natural" }
+          : { ...r, decision: "reject" });
+    const review = path.join(dir, "review.tsv");
+    const store = path.join(dir, "store.json");
+    fs.writeFileSync(review, tsv(decided));
+    const out = applyReview(review, "tester", { dictionary, pairs, storeFile: store });
+    assert.deepEqual(out, { accepted: 1, edited: 1, rejected: 2, skipped: 0, errors: [] }); // lonely, metre
+    const saved = JSON.parse(fs.readFileSync(store, "utf-8"));
+    assert.deepEqual(saved.map((e) => e.word), ["harvest", "tidy"]);
+    const tidy = saved.find((e) => e.word === "tidy");
+    assert.equal(tidy.translation, "她每天都把房间收拾得整整齐齐。");
+    assert.equal(tidy.original.translation, "她每天都把房间收拾得很整洁。");
+    assert.equal(tidy.edited, true);
+    assert.equal(tidy.engId, "3");
+    assert.equal(tidy.cmnId, "1003");
+    assert.equal(tidy.license, LICENSE);
+
+    // text changed outside the *_fix columns, and a word that is already stored: refused, nothing written
+    const before = fs.readFileSync(store, "utf-8");
+    const bad = decided.map((r) => (r.word === "lonely" ? { ...r, decision: "accept", sentence: "He felt very lonely after they left." } : r));
+    fs.writeFileSync(review, tsv(bad));
+    const again = applyReview(review, "tester", { dictionary, pairs, storeFile: store });
+    assert.ok(again.errors.some((e) => e.startsWith("lonely: ") && e.includes("differs from Tatoeba")));
+    assert.ok(again.errors.some((e) => e.startsWith("harvest: ") && e.includes("already accepted")));
+    assert.equal(fs.readFileSync(store, "utf-8"), before);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

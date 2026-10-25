@@ -4,13 +4,15 @@
   "tatoeba_sha256": "d766002332a8f21099afd7427138d44f06bed7486a18f7f0f26f217092667d73",
   "cmudict_sha256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22",
   "wordnet_index_sense_sha256": "68b3a468cddfd8e92134b9b0624339a02a1b837159243c297c5f138a3d618392",
-  "previous_sha256": "f6890010854cd7d94c13fd2d7df301d0774f3ac38bf2dbf6c68d877b88f56b1e"
+  "previous_sha256": "68198e63248874aac9c5d0601a2d0273cc2b22a5be3574eaba0ede3c0c313f25",
+  "examples_sha256": "82c45cfb635c39b0c77f21af358eb18f272b8a6e557e7be212dbebdf199df460"
  },
  "overrides_version": 3,
  "freq_rank_limit": 10000,
  "words": 12943,
- "with_example": 3678,
+ "with_example": 3969,
  "examples_kept_from_previous": 3678,
+ "examples_from_reviewed": 291,
  "with_phonetic": 12932,
  "by_reason": {
   "existing": 10443,

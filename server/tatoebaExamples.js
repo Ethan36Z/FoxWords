@@ -12,6 +12,10 @@
 //   cmn-eng_links.tsv                                       (per_language/cmn/)
 //   user_languages.csv  (optional; marks native speakers)   (exports/user_languages.tar.bz2)
 //
+//   node tatoebaExamples.js --accept .ai-work/tatoeba/gk-review.tsv --reviewer NAME --data DIR [--replace]
+//        applies the decisions (accept | edit | reject) to tatoeba_examples.json,
+//        the committed list of reviewed examples that build_dictionary.py uses.
+//
 // Matching is by word form only. The "match" column says whether the Chinese
 // also contains a core gloss ("form+gloss"); that is a hint for the reviewer,
 // not proof that the sentence uses the word in the target sense.
@@ -21,7 +25,9 @@ const path = require("path");
 const readline = require("readline");
 const { formRegex, checkSentence, checkTranslation, glossKeys, meaningVisible } = require("./aiExamples/validate");
 const { selectWords } = require("./aiExamples/plan");
-const { readStore } = require("./aiExamples/store");
+const { readStore, writeStore, parseReview } = require("./aiExamples/store");
+
+const STORE_FILE = path.join(__dirname, "tatoeba_examples.json");
 
 const LICENSE = "CC BY 2.0 FR";
 const COLUMNS = [
@@ -193,11 +199,73 @@ function writeTsv(file, rows) {
   fs.writeFileSync(file, [COLUMNS.join("\t"), ...rows.map((r) => COLUMNS.map((c) => clean(r[c])).join("\t"))].join("\n") + "\n");
 }
 
+// Applies human decisions to tatoeba_examples.json. Every kept row is checked
+// again: the word still has no example of any kind, the ids still point to
+// the same Tatoeba sentences, and the (possibly edited) text passes the checks.
+// Returns { accepted, edited, rejected, skipped, errors }.
+function applyReview(reviewFile, reviewer, { dictionary, aiWords = [], pairs, storeFile = STORE_FILE, replace = false }) {
+  if (!reviewer) throw new Error("a reviewer name is required");
+  const dict = new Map(dictionary.map((e) => [e.word, e]));
+  const ai = new Set(aiWords);
+  const byIds = new Map(pairs.map((p) => [`${p.engId}/${p.cmnId}`, p]));
+  const store = new Map(readStore(storeFile).map((e) => [e.word, e]));
+  const out = { accepted: 0, edited: 0, rejected: 0, skipped: 0, errors: [] };
+  const reviewedAt = new Date().toISOString();
+  const sentences = new Set([...store.values()].map((e) => e.sentence));
+  for (const row of parseReview(reviewFile)) {
+    const decision = row.decision.toLowerCase();
+    if (!decision) { out.skipped += 1; continue; }
+    if (decision === "reject") { out.rejected += 1; continue; }
+    if (decision !== "accept" && decision !== "edit") { out.errors.push(`${row.word}: unknown decision "${row.decision}"`); continue; }
+    const entry = dict.get(row.word);
+    const src = byIds.get(`${row.eng_id}/${row.cmn_id}`);
+    const problems = [];
+    if (!entry) problems.push("not in the dictionary");
+    else if (entry.example) problems.push("already has a human example");
+    if (ai.has(row.word)) problems.push("has an accepted AI example");
+    if (!src) problems.push(`Tatoeba pair ${row.eng_id}/${row.cmn_id} not found`);
+    else if (src.en !== row.sentence || src.zh !== row.translation) problems.push("sentence or translation differs from Tatoeba; put changes in the *_fix columns");
+    if (store.has(row.word) && !replace) problems.push("already accepted (use --replace to correct it)");
+    const sentence = (decision === "edit" && row.sentence_fix) || row.sentence;
+    const translation = (decision === "edit" && row.translation_fix) || row.translation;
+    if (decision === "edit" && !row.sentence_fix && !row.translation_fix) problems.push("edit without a fix");
+    const s = checkSentence(sentence, row.word);
+    problems.push(...s.errors, ...checkTranslation(translation).errors);
+    if (!s.hasForm) problems.push("word form not found in the sentence");
+    if (!isSimplified(translation)) problems.push("translation is not Simplified Chinese");
+    if (sentences.has(sentence)) problems.push("sentence already used for another word");
+    if (problems.length) { out.errors.push(`${row.word}: ${problems.join(", ")}`); continue; }
+    sentences.add(sentence);
+    const edited = sentence !== row.sentence || translation !== row.translation;
+    store.set(row.word, {
+      word: row.word, sentence, translation, meaning: entry.meaning,
+      source: "tatoeba", engId: row.eng_id, cmnId: row.cmn_id, engAuthor: row.eng_author, cmnAuthor: row.cmn_author,
+      license: row.license || LICENSE,
+      ...(edited ? { original: { sentence: row.sentence, translation: row.translation } } : {}),
+      edited, reviewer, reviewedAt, note: row.note || "",
+    });
+    if (edited) out.edited += 1;
+    else out.accepted += 1;
+  }
+  if (!out.errors.length) writeStore([...store.values()], storeFile);
+  return out;
+}
+
 const sha256 = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
 async function main(argv) {
   const a = {};
   for (let i = 0; i < argv.length; i += 2) a[argv[i].replace(/^--/, "")] = argv[i + 1];
+  if (a.accept) {
+    if (!a.data) throw new Error("--accept needs --data DIR to check the Tatoeba ids");
+    const dictionary = JSON.parse(fs.readFileSync(path.join(__dirname, "dictionary.json"), "utf-8"));
+    const result = applyReview(a.accept, a.reviewer, {
+      dictionary, aiWords: readStore().map((e) => e.word), pairs: await loadTatoeba(a.data), replace: a.replace === "true",
+    });
+    console.log(JSON.stringify(result, null, 1));
+    if (result.errors.length) throw new Error(`${result.errors.length} errors; nothing was written`);
+    return;
+  }
   if (!a.data || !a.book) throw new Error("usage: tatoebaExamples.js --data DIR --book gk [--out DIR] [--sample 100] [--seed N]");
   const out = a.out || path.join(__dirname, ".ai-work", "tatoeba");
   const dictionary = JSON.parse(fs.readFileSync(path.join(__dirname, "dictionary.json"), "utf-8"));
@@ -228,4 +296,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { isSimplified, loadTatoeba, buildCandidates, rankCandidates, levelLookup, sample, COLUMNS, LICENSE };
+module.exports = { STORE_FILE, applyReview, isSimplified, loadTatoeba, buildCandidates, rankCandidates, levelLookup, sample, COLUMNS, LICENSE };

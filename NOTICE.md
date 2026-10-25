@@ -42,6 +42,13 @@ The English–Mandarin pairs were downloaded from manythings.org
 (https://www.manythings.org/anki/), which distributes them under the same
 licence. Sentences are by Tatoeba contributors.
 
+Reviewed examples taken from the official Tatoeba export
+(https://downloads.tatoeba.org/exports/) are listed in
+`server/tatoeba_examples.json`. Each entry records the English and Chinese
+sentence ids (https://tatoeba.org/sentences/show/<id>), the authors, the
+licence, and, when a reviewer corrected the text, the original sentence and
+translation.
+
 ## CMU Pronouncing Dictionary
 
 General American pronunciations (converted to IPA).
