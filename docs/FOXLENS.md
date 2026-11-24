@@ -30,6 +30,19 @@ does not touch Lens.
   final answer shows up to two of them under "你见过的句子". This happens only
   on the final reveal, never in the quick recognition step.
 
+## Adding words from Lens directly
+
+Lens (branch `feature/foxwords-notebook` of foxwords-lens) has a
+**加入生词本 FoxWords** button next to **Save sentence**. It asks FoxWords
+which words of the sentence are in the dictionary (`POST /api/lens/lookup`),
+lets you pick some, adds them to the notebook (`POST /api/notebook`), and
+stores the sentence too (`POST /api/lens/import`, same id as a Lens export,
+so a later export import skips it).
+
+Lens only talks to a FoxWords on the same computer, over loopback HTTP:
+`LENS_FOXWORDS_URL`, by default `http://127.0.0.1:8084` (the deployed
+frontend, which forwards `/api`). The public site stays behind FoxGate.
+
 ## Storage and API
 
 Table `lens_sentences` (`server/db.js`):
@@ -46,6 +59,7 @@ import.
 | `POST /api/lens/import` | body: the export array; inserts new sentences |
 | `GET /api/lens?q=&limit=&offset=` | list / search |
 | `GET /api/lens/:id/words` | dictionary words in a sentence |
+| `POST /api/lens/lookup` | body `{ sentence }`: dictionary words, for Lens |
 | `DELETE /api/lens/:id` | remove one imported sentence |
 
 Exports up to 10 MB and 5,000 entries are accepted; other versions are

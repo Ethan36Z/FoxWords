@@ -320,6 +320,14 @@ app.get("/api/lens", (req, res) => {
   }
 });
 
+// FoxWords Lens asks which words of a sentence are in the dictionary
+// before adding some to the notebook. Body: { sentence }
+app.post("/api/lens/lookup", (req, res) => {
+  const sentence = typeof req.body?.sentence === "string" ? req.body.sentence.trim() : "";
+  if (!sentence || sentence.length > 600) return res.status(400).json({ error: "sentence (1-600 characters) is required" });
+  res.json(lens.wordsInSentence(db, sentence));
+});
+
 app.get("/api/lens/:id/words", (req, res) => {
   const row = db.prepare("SELECT sentence FROM lens_sentences WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "sentence not found" });
@@ -546,7 +554,8 @@ if (require.main === module) {
   const aiImported = importAiExamplesIfChanged();
   if (aiImported !== null) console.log("ai_examples.json changed, loaded AI examples:", aiImported);
 
-  app.listen(PORT, () => {
+  // HOST=127.0.0.1 keeps a local trial instance off the network (Docker uses the default)
+  app.listen(PORT, process.env.HOST || undefined, () => {
     console.log(`FoxWords backend running on port ${PORT}`);
     console.log("STORY_LIMIT:", STORY_LIMIT);
     console.log("Corvus AI configured:", corvus.isConfigured());

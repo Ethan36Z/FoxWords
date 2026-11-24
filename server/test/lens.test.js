@@ -117,6 +117,14 @@ test("study cards carry the sentences the learner has seen", async () => {
   assert.equal(byWord.has("study") && byWord.get("study").lensSentences[0].id, "a2");
 });
 
+test("lookup by sentence text, for FoxWords Lens", async () => {
+  const { status, body } = await api("POST", "/api/lens/lookup", { sentence: "We made some headway on the stairs." });
+  assert.equal(status, 200);
+  assert.deepEqual(body.map((w) => [w.word, w.inNotebook]), [["headway", true], ["stair", false]]);
+  assert.equal((await api("POST", "/api/lens/lookup", { sentence: "" })).status, 400);
+  assert.equal((await api("POST", "/api/lens/lookup", { sentence: "x".repeat(601) })).status, 400);
+});
+
 test("non-array bodies are refused; delete removes one sentence", async () => {
   assert.equal((await api("POST", "/api/lens/preview", { entries: [] })).status, 400);
   assert.equal((await api("DELETE", "/api/lens/a2")).status, 200);
