@@ -105,11 +105,14 @@ function listSentences(db, { q = "", limit = 50, offset = 0 } = {}) {
   return { total, items: rows.map(toApi) };
 }
 
-// Dictionary entries for the words of a sentence, with simple inflections
-// mapped back (stairs -> stair, studied -> study). In sentence order, once each.
+// Dictionary entries for the words of a text, with simple inflections
+// mapped back (stairs -> stair, studied -> study). In text order, once each,
+// at most MAX_WORDS. tooEasy: the learner marked the word 太简单 in FoxWords.
+const MAX_WORDS = 80;
 function wordsInSentence(db, sentence) {
-  const find = db.prepare("SELECT word, meaning, translation, definition FROM dictionary WHERE lower(word) = ? LIMIT 1");
+  const find = db.prepare("SELECT word, phonetic, level, meaning, translation, definition FROM dictionary WHERE lower(word) = ? LIMIT 1");
   const inNotebook = new Set(db.prepare("SELECT word FROM notebook").all().map((r) => r.word));
+  const easy = new Set(db.prepare("SELECT word FROM word_stats WHERE tooEasy = 1").all().map((r) => r.word));
   const seen = new Set();
   const out = [];
   for (const tok of String(sentence).toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []) {
@@ -121,7 +124,11 @@ function wordsInSentence(db, sentence) {
     const hit = tries.map((x) => find.get(x)).find(Boolean);
     if (!hit || seen.has(hit.word)) continue;
     seen.add(hit.word);
-    out.push({ token: tok, word: hit.word, meaning: hit.meaning || "", translation: hit.translation || "", definition: hit.definition || "", inNotebook: inNotebook.has(hit.word) });
+    out.push({
+      token: tok, word: hit.word, phonetic: hit.phonetic || "", level: hit.level || "", meaning: hit.meaning || "",
+      translation: hit.translation || "", definition: hit.definition || "", inNotebook: inNotebook.has(hit.word), tooEasy: easy.has(hit.word),
+    });
+    if (out.length >= MAX_WORDS) break;
   }
   return out;
 }

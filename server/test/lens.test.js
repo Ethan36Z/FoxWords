@@ -120,9 +120,14 @@ test("study cards carry the sentences the learner has seen", async () => {
 test("lookup by sentence text, for FoxWords Lens", async () => {
   const { status, body } = await api("POST", "/api/lens/lookup", { sentence: "We made some headway on the stairs." });
   assert.equal(status, 200);
-  assert.deepEqual(body.map((w) => [w.word, w.inNotebook]), [["headway", true], ["stair", false]]);
+  assert.deepEqual(body.map((w) => [w.word, w.inNotebook, w.tooEasy]), [["headway", true, false], ["stair", false, false]]);
+  assert.equal(body[1].level, "中考");
+  db.prepare("INSERT INTO word_stats (word, tooEasy) VALUES ('stair', 1)").run();
+  const again = await api("POST", "/api/lens/lookup", { sentence: "We made some headway on the stairs." });
+  assert.equal(again.body[1].tooEasy, true);
   assert.equal((await api("POST", "/api/lens/lookup", { sentence: "" })).status, 400);
-  assert.equal((await api("POST", "/api/lens/lookup", { sentence: "x".repeat(601) })).status, 400);
+  assert.equal((await api("POST", "/api/lens/lookup", { sentence: "x ".repeat(900) })).status, 200); // an OCR region
+  assert.equal((await api("POST", "/api/lens/lookup", { sentence: "x".repeat(2001) })).status, 400);
 });
 
 test("non-array bodies are refused; delete removes one sentence", async () => {

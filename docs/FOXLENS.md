@@ -32,12 +32,13 @@ does not touch Lens.
 
 ## Adding words from Lens directly
 
-Lens (branch `feature/foxwords-notebook` of foxwords-lens) has a
-**加入生词本 FoxWords** button next to **Save sentence**. It asks FoxWords
-which words of the sentence are in the dictionary (`POST /api/lens/lookup`),
-lets you pick some, adds them to the notebook (`POST /api/notebook`), and
-stores the sentence too (`POST /api/lens/import`, same id as a Lens export,
-so a later export import skips it).
+Lens (branch `feature/foxwords-notebook` of foxwords-lens) is built around
+capture → words → notebook. After a screen capture or text selection it asks
+FoxWords for the dictionary words of the text (`POST /api/lens/lookup`) and
+lists them with phonetic, level and Chinese meaning; words marked 太简单 are
+hidden. One click on **加入生词本** adds a word (`POST /api/notebook`) and stores
+its sentence (`POST /api/lens/import`, same id as a Lens export, so a later
+export import skips it).
 
 Lens only talks to a FoxWords on the same computer, over loopback HTTP:
 `LENS_FOXWORDS_URL`, by default `http://127.0.0.1:8084` (the deployed
@@ -59,7 +60,7 @@ import.
 | `POST /api/lens/import` | body: the export array; inserts new sentences |
 | `GET /api/lens?q=&limit=&offset=` | list / search |
 | `GET /api/lens/:id/words` | dictionary words in a sentence |
-| `POST /api/lens/lookup` | body `{ sentence }`: dictionary words, for Lens |
+| `POST /api/lens/lookup` | body `{ sentence }` (up to 2,000 characters, e.g. an OCR region): dictionary words with phonetic, level, core meaning, notebook state and 太简单 flag, at most 80 |
 | `DELETE /api/lens/:id` | remove one imported sentence |
 
 Exports up to 10 MB and 5,000 entries are accepted; other versions are

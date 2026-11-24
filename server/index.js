@@ -320,11 +320,11 @@ app.get("/api/lens", (req, res) => {
   }
 });
 
-// FoxWords Lens asks which words of a sentence are in the dictionary
-// before adding some to the notebook. Body: { sentence }
+// FoxWords Lens asks which words of a captured text (a sentence or an OCR
+// region) are in the dictionary before adding some to the notebook. Body: { sentence }
 app.post("/api/lens/lookup", (req, res) => {
   const sentence = typeof req.body?.sentence === "string" ? req.body.sentence.trim() : "";
-  if (!sentence || sentence.length > 600) return res.status(400).json({ error: "sentence (1-600 characters) is required" });
+  if (!sentence || sentence.length > 2000) return res.status(400).json({ error: "sentence (1-2000 characters) is required" });
   res.json(lens.wordsInSentence(db, sentence));
 });
 
