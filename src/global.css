@@ -2152,6 +2152,129 @@ mark {
 }
 
 /* =========================================================
+   FoxLens sentences (notebook tab + study card)
+   ========================================================= */
+.lens-import__title {
+  font-weight: 650;
+}
+
+.lens-import__preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lens-import__sample {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.lens-import__msg {
+  margin-top: 8px;
+}
+
+.lens-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lens-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.lens-card:first-child {
+  border-top: none;
+}
+
+.lens-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lens-card__sentence {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.lens-card__meaning {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.lens-card__caution {
+  color: var(--warn);
+}
+
+.lens-card__toggle {
+  justify-self: start;
+}
+
+.lens-exprs {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  list-style: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.lens-exprs__zh {
+  margin-left: 8px;
+  color: var(--text-2);
+}
+
+.lens-exprs__example {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.lens-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lens-words .chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.lens-words__zh {
+  overflow: hidden;
+  max-width: 9em;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-seen__meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wp-seen + .wp-seen {
+  margin-top: 8px;
+}
+
+/* =========================================================
    Settings drawers
    ========================================================= */
 .settings-page {

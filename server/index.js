@@ -7,6 +7,7 @@ const { importDictionaryIfChanged } = require("./import_dictionary");
 const { importAiExamplesIfChanged } = require("./import_ai_examples");
 const { CorvusError, corvusClientFromEnv } = require("./corvusClient");
 const { BOOKS } = require("./books");
+const lens = require("./lens");
 
 const app = express();
 
@@ -27,6 +28,8 @@ function sendAiError(res, err, fallbackMessage) {
 }
 
 app.use(cors());
+// FoxWords Lens exports can be larger than the default 100 kB
+app.use("/api/lens", express.json({ limit: "10mb" }));
 app.use(express.json());
 
 // -------------------- health --------------------
@@ -287,6 +290,48 @@ app.get("/api/dictionary", (req, res) => {
   }
 });
 
+// -------------------- FoxWords Lens sentences --------------------
+// Body: the JSON array exported by Lens (Library → Export). Preview first,
+// then import; duplicates (same id or same sentence) are skipped.
+app.post("/api/lens/preview", (req, res) => {
+  try {
+    res.json(lens.previewImport(db, req.body));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/lens/import", (req, res) => {
+  try {
+    res.json(lens.importEntries(db, req.body));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/lens", (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "50", 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset || "0", 10) || 0, 0);
+    res.json(lens.listSentences(db, { q: String(req.query.q || "").trim(), limit, offset }));
+  } catch (err) {
+    console.error("GET /api/lens error:", err);
+    res.status(500).json({ error: "Failed to load sentences" });
+  }
+});
+
+app.get("/api/lens/:id/words", (req, res) => {
+  const row = db.prepare("SELECT sentence FROM lens_sentences WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "sentence not found" });
+  res.json(lens.wordsInSentence(db, row.sentence));
+});
+
+app.delete("/api/lens/:id", (req, res) => {
+  const info = db.prepare("DELETE FROM lens_sentences WHERE id = ?").run(req.params.id);
+  if (!info.changes) return res.status(404).json({ error: "sentence not found" });
+  res.json({ ok: true });
+});
+
 // -------------------- login (demo) --------------------
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body || {};
@@ -389,14 +434,14 @@ app.get("/api/words/today", (req, res) => {
         db.prepare("SELECT word FROM word_stats WHERE tooEasy = 1").all().map((r) => r.word)
       );
       todayCache.rows = todayCache.rows.filter((w) => !easy.has(w.word));
-      return res.json(withAiExamples(todayCache.rows));
+      return res.json(lens.withLensSentences(db, withAiExamples(todayCache.rows)));
     }
 
     const rows = buildBatch(limit, studyMix, book, includeSensitive);
     // Always cache the latest batch so the next normal load reuses it
     todayCache = { key, rows };
 
-    res.json(withAiExamples(rows));
+    res.json(lens.withLensSentences(db, withAiExamples(rows)));
   } catch (err) {
     console.error("GET /api/words/today error:", err);
     res.status(500).json({ error: "Failed to load today's words" });

@@ -60,6 +60,22 @@ db.exec(`
     edited INTEGER NOT NULL DEFAULT 0
   );
 
+  -- Sentences captured with FoxWords Lens (foxwords-lens), imported from its
+  -- version-1 JSON export. The original entry is kept in payload; meaning,
+  -- expressions and caution are Corvus output from Lens, shown as such.
+  CREATE TABLE IF NOT EXISTS lens_sentences (
+    id TEXT PRIMARY KEY,
+    sentence TEXT NOT NULL,
+    meaning TEXT DEFAULT '',
+    expressions TEXT DEFAULT '[]',
+    caution TEXT DEFAULT '',
+    sourceKind TEXT DEFAULT '',
+    sourceLabel TEXT DEFAULT '',
+    capturedAt TEXT DEFAULT '',
+    importedAt TEXT NOT NULL,
+    payload TEXT NOT NULL
+  );
+
   -- How often the learner answered "认识" / "不认识" for each word.
   -- Keyed by word (not dictionary id) so it survives dictionary re-imports.
   CREATE TABLE IF NOT EXISTS word_stats (

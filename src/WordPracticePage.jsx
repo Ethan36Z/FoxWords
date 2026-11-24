@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { API_BASE } from "./apiBase";
 import SpeakButton from "./SpeakButton";
 import { speak } from "./speech";
+import { sourceLabel } from "./lensLabels";
 
 /*
   Card flow
@@ -431,6 +432,27 @@ function WordPracticePage() {
               </div>
             </div>
           )}
+
+          {/* Sentences the learner captured with FoxLens that contain this word */}
+          {showMeaning && current.lensSentences?.length ? (
+            <div className="wp-section">
+              <div className="wp-label">你见过的句子</div>
+              {current.lensSentences.map((s) => (
+                <div key={s.id} className="wp-box wp-example wp-seen">
+                  <div className="wp-example__en">
+                    <span>
+                      <Highlight text={s.sentence} word={current.word} />
+                    </span>
+                    <SpeakButton text={s.sentence} label="朗读句子" size="sm" rate={0.85} />
+                  </div>
+                  <div className="wp-seen__meta">
+                    FoxLens · {sourceLabel(s.sourceKind)}
+                    {s.meaning ? ` · ${s.meaning}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           <div className="wp-answer">
             {phase === "recall" && (

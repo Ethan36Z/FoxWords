@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "./apiBase";
 import SpeakButton from "./SpeakButton";
+import LensLibrary from "./LensLibrary";
 
 function NotebookPage() {
   const PAGE_SIZE = 20;
@@ -11,6 +12,7 @@ function NotebookPage() {
   const [busyId, setBusyId] = useState(null);
   const [filter, setFilter] = useState("");
   const [expanded, setExpanded] = useState(null); // id of the row showing details
+  const [tab, setTab] = useState("words"); // words | sentences (FoxLens)
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -144,16 +146,30 @@ function NotebookPage() {
           <div className="page-head">
             <h2>生词本</h2>
             <p className="text-muted">
-              {typeof total === "number" ? `一共 ${total} 个生词` : "你标记过的所有生词"}
+              {tab === "sentences"
+                ? "用 FoxLens 抓到的英文句子"
+                : typeof total === "number" ? `一共 ${total} 个生词` : "你标记过的所有生词"}
             </p>
           </div>
 
-          <button className="btn btn-secondary btn-sm" onClick={loadFirstPage} disabled={loading}>
-            刷新
-          </button>
+          {tab === "words" ? (
+            <button className="btn btn-secondary btn-sm" onClick={loadFirstPage} disabled={loading}>
+              刷新
+            </button>
+          ) : null}
         </div>
 
-        {loading ? (
+        <div className="segmented" role="tablist" aria-label="生词本内容" style={{ alignSelf: "flex-start", justifySelf: "start" }}>
+          {[["words", "单词"], ["sentences", "句子 · FoxLens"]].map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "is-on" : ""} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "sentences" ? (
+          <LensLibrary />
+        ) : loading ? (
           <div className="card state-card">
             <div className="spinner" />
             <p className="text-muted">正在加载生词本…</p>
