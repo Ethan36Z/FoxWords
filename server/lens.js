@@ -105,28 +105,66 @@ function listSentences(db, { q = "", limit = 50, offset = 0 } = {}) {
   return { total, items: rows.map(toApi) };
 }
 
-// Dictionary entries for the words of a text, with simple inflections
-// mapped back (stairs -> stair, studied -> study). In text order, once each,
-// at most MAX_WORDS. tooEasy: the learner marked the word 太简单 in FoxWords.
+// Words of a captured text, in text order, once each, at most MAX_WORDS.
+// Each token is matched against the study dictionary, then the lookup-only
+// list (inDictionary: false, "词表外"). Inflections go to their lemma via
+// word_forms (drove -> drive, children -> child); when the token is also a
+// word of its own (felt n. 毛毯), the more frequent reading comes first and
+// the other is returned as `also`. Regular endings and -ly adverbs are tried
+// when word_forms has nothing. tooEasy: marked 太简单 in FoxWords.
 const MAX_WORDS = 80;
+const FORM_LABEL = { p: "过去式", d: "过去分词", i: "现在分词", 3: "第三人称单数", s: "复数", r: "比较级", t: "最高级" };
+const formLabel = (kinds) => (kinds === "pd" || kinds === "dp" ? "过去式/过去分词" : FORM_LABEL[kinds[0]] || "");
+
+const regularTries = (t) => [
+  t.replace(/ies$/, "y"), t.replace(/ied$/, "y"), t.replace(/es$/, ""), t.replace(/s$/, ""),
+  t.replace(/ed$/, ""), t.replace(/d$/, ""), t.replace(/ing$/, ""), t.replace(/ing$/, "e"),
+  t.replace(/([b-df-hj-np-tv-z])\1(ed|ing)$/, "$1"),
+].filter((x) => x !== t && x.length > 1);
+// happily -> happy, gently -> gentle, basically -> basic, quickly -> quick
+const adverbTries = (t) => (/..ly$/.test(t) ? [t.slice(0, -3) + "y", t.slice(0, -2) + "e", t.slice(0, -4), t.slice(0, -2)] : []);
+
 function wordsInSentence(db, sentence) {
-  const find = db.prepare("SELECT word, phonetic, level, meaning, translation, definition FROM dictionary WHERE lower(word) = ? LIMIT 1");
+  const study = db.prepare("SELECT word, phonetic, level, meaning, translation, definition FROM dictionary WHERE lower(word) = ? LIMIT 1");
+  const extra = db.prepare("SELECT word, phonetic, meaning, translation, definition FROM lookup_words WHERE word = ?");
+  const forms = db.prepare("SELECT lemma, kinds, lemmaFirst FROM word_forms WHERE form = ?");
+  const entry = (w) => {
+    const s = study.get(w);
+    if (s) return { ...s, inDictionary: true };
+    const x = extra.get(w);
+    return x ? { ...x, level: "", inDictionary: false } : null;
+  };
   const inNotebook = new Set(db.prepare("SELECT word FROM notebook").all().map((r) => r.word));
   const easy = new Set(db.prepare("SELECT word FROM word_stats WHERE tooEasy = 1").all().map((r) => r.word));
+
+  // Readings of one token, best first: [{ e, form }]
+  const readings = (t) => {
+    const self = entry(t);
+    const lemmas = forms.all(t).map((f) => ({ e: entry(f.lemma), form: formLabel(f.kinds), first: f.lemmaFirst })).filter((r) => r.e);
+    if (self || lemmas.length) {
+      return [...lemmas.filter((r) => r.first), ...(self ? [{ e: self, form: "" }] : []), ...lemmas.filter((r) => !r.first)];
+    }
+    for (const x of regularTries(t)) if (entry(x)) return [{ e: entry(x), form: "变形" }];
+    for (const x of adverbTries(t)) if (entry(x)) return [{ e: entry(x), form: "副词" }];
+    return [];
+  };
+
   const seen = new Set();
   const out = [];
   for (const tok of String(sentence).toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []) {
     const t = tok.replace(/'s$/, "");
     if (STOP.has(t) || t.length < 2) continue;
-    const tries = [t, t.replace(/ies$/, "y"), t.replace(/ied$/, "y"), t.replace(/es$/, ""), t.replace(/s$/, ""),
-      t.replace(/ed$/, ""), t.replace(/d$/, ""), t.replace(/ing$/, ""), t.replace(/ing$/, "e"),
-      t.replace(/([b-df-hj-np-tv-z])\1(ed|ing)$/, "$1")];
-    const hit = tries.map((x) => find.get(x)).find(Boolean);
-    if (!hit || seen.has(hit.word)) continue;
-    seen.add(hit.word);
+    const [main, alt] = readings(t);
+    // "children pl. 孩子" only repeats child; keep alternatives with a meaning of their own
+    const other = alt && !/^pl\./.test(alt.e.meaning || "") ? alt : null;
+    if (!main || seen.has(main.e.word)) continue;
+    seen.add(main.e.word);
+    const e = main.e;
     out.push({
-      token: tok, word: hit.word, phonetic: hit.phonetic || "", level: hit.level || "", meaning: hit.meaning || "",
-      translation: hit.translation || "", definition: hit.definition || "", inNotebook: inNotebook.has(hit.word), tooEasy: easy.has(hit.word),
+      token: tok, word: e.word, phonetic: e.phonetic || "", level: e.level || "", meaning: e.meaning || "",
+      translation: e.translation || "", definition: e.definition || "", inDictionary: e.inDictionary, form: main.form,
+      also: other ? { word: other.e.word, meaning: other.e.meaning || "", form: other.form } : null,
+      inNotebook: inNotebook.has(e.word), tooEasy: easy.has(e.word),
     });
     if (out.length >= MAX_WORDS) break;
   }

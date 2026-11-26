@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const db = require("./db");
 const { importDictionaryIfChanged } = require("./import_dictionary");
+const { importLookupIfChanged } = require("./import_lookup");
 const { importAiExamplesIfChanged } = require("./import_ai_examples");
 const { CorvusError, corvusClientFromEnv } = require("./corvusClient");
 const { BOOKS } = require("./books");
@@ -49,8 +50,9 @@ app.get("/api/notebook", (req, res) => {
     const items = db
       .prepare(
         `SELECT n.id, n.word, n.translation, n.definition, n.createdAt,
-                COALESCE(d.phonetic, '') AS phonetic
+                COALESCE(d.phonetic, l.phonetic, '') AS phonetic
          FROM notebook n LEFT JOIN dictionary d ON d.word = n.word
+         LEFT JOIN lookup_words l ON l.word = n.word
          ORDER BY n.id DESC LIMIT ? OFFSET ?`
       )
       .all(limit, offset);
@@ -320,8 +322,9 @@ app.get("/api/lens", (req, res) => {
   }
 });
 
-// FoxWords Lens asks which words of a captured text (a sentence or an OCR
-// region) are in the dictionary before adding some to the notebook. Body: { sentence }
+// FoxWords Lens asks for the words of a captured text (a sentence or an OCR
+// region) before adding some to the notebook: study-dictionary words, then
+// lookup-only words, with inflections mapped to their lemma. Body: { sentence }
 app.post("/api/lens/lookup", (req, res) => {
   const sentence = typeof req.body?.sentence === "string" ? req.body.sentence.trim() : "";
   if (!sentence || sentence.length > 2000) return res.status(400).json({ error: "sentence (1-2000 characters) is required" });
@@ -551,6 +554,8 @@ app.get("/api/words/stats", (req, res) => {
 if (require.main === module) {
   const imported = importDictionaryIfChanged();
   if (imported !== null) console.log("dictionary.json changed, imported words:", imported);
+  const lookupImported = importLookupIfChanged();
+  if (lookupImported !== null) console.log("lookup.json changed, loaded:", lookupImported);
   const aiImported = importAiExamplesIfChanged();
   if (aiImported !== null) console.log("ai_examples.json changed, loaded AI examples:", aiImported);
 

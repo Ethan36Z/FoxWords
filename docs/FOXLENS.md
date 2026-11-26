@@ -40,6 +40,25 @@ hidden. One click on **加入生词本** adds a word (`POST /api/notebook`) and 
 its sentence (`POST /api/lens/import`, same id as a Lens export, so a later
 export import skips it).
 
+### Word forms and lookup-only words
+
+Lookup does not stop at the study dictionary (about 13,000 words, a learning
+list). `server/lookup.json`, built by `server/build_lookup.py` from ECDICT,
+adds two tables that the backend loads at startup when the file changes:
+
+- `word_forms`: about 36,500 inflections mapped to their lemma (drove → drive,
+  caught → catch, children → child), from ECDICT's exchange field. When the
+  form is also a word of its own (felt n. 毛毯, ground n. 地面), the more
+  frequent reading (COCA/BNC rank) comes first and the other is returned as
+  `also`; Lens shows "felt 是 feel 的过去式/过去分词 · 也作 felt：n. 毛毯".
+- `lookup_words`: about 31,000 common words outside the study dictionary,
+  with phonetic and meaning. Lens labels them 词表外. They are never part of
+  the study plan; added to the notebook they work like any notebook word.
+
+Regular endings and -ly adverbs are still guessed when neither table has the
+token. Rebuild with
+`python3 -I server/build_lookup.py <ecdict.csv>` after a dictionary rebuild.
+
 Lens only talks to a FoxWords on the same computer, over loopback HTTP:
 `LENS_FOXWORDS_URL`, by default `http://127.0.0.1:8084` (the deployed
 frontend, which forwards `/api`). The public site stays behind FoxGate.
@@ -60,7 +79,7 @@ import.
 | `POST /api/lens/import` | body: the export array; inserts new sentences |
 | `GET /api/lens?q=&limit=&offset=` | list / search |
 | `GET /api/lens/:id/words` | dictionary words in a sentence |
-| `POST /api/lens/lookup` | body `{ sentence }` (up to 2,000 characters, e.g. an OCR region): dictionary words with phonetic, level, core meaning, notebook state and 太简单 flag, at most 80 |
+| `POST /api/lens/lookup` | body `{ sentence }` (up to 2,000 characters, e.g. an OCR region): words with phonetic, level, core meaning, `form` (e.g. 过去式), `also`, `inDictionary` (false = 词表外), notebook state and 太简单 flag, at most 80 |
 | `DELETE /api/lens/:id` | remove one imported sentence |
 
 Exports up to 10 MB and 5,000 entries are accepted; other versions are

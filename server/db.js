@@ -76,6 +76,24 @@ db.exec(`
     payload TEXT NOT NULL
   );
 
+  -- Lookup-only data from server/lookup.json (build_lookup.py), for FoxWords
+  -- Lens: common words outside the study dictionary (never studied) and
+  -- inflections mapped to their lemma. Replaced whenever the file changes.
+  CREATE TABLE IF NOT EXISTS lookup_words (
+    word TEXT PRIMARY KEY,
+    phonetic TEXT DEFAULT '',
+    meaning TEXT DEFAULT '',
+    translation TEXT DEFAULT '',
+    definition TEXT DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS word_forms (
+    form TEXT NOT NULL,
+    lemma TEXT NOT NULL,
+    kinds TEXT NOT NULL,
+    lemmaFirst INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (form, lemma)
+  );
+
   -- How often the learner answered "认识" / "不认识" for each word.
   -- Keyed by word (not dictionary id) so it survives dictionary re-imports.
   CREATE TABLE IF NOT EXISTS word_stats (

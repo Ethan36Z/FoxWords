@@ -136,3 +136,32 @@ test("non-array bodies are refused; delete removes one sentence", async () => {
   assert.equal((await api("DELETE", "/api/lens/a2")).status, 404);
   assert.equal((await api("GET", "/api/lens")).body.total, 1);
 });
+
+test("lookup maps irregular forms and finds lookup-only words", async () => {
+  const file = path.join(tmpDir, "lookup.json");
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    words: [["headway", "ˈhedweɪ", "n. 进展", "n. 进展", "progress"], ["felt", "felt", "n. 毛毯", "n. 毛毯", ""],
+      ["children", "", "pl. 孩子", "pl. 孩子", ""]],
+    forms: [["made", "make", "pd", 1], ["felt", "feel", "pd", 1], ["children", "child", "s", 1]],
+  }));
+  db.prepare("INSERT INTO dictionary (word, meaning, translation, level) VALUES ('feel', 'v. 感觉', 'v. 感觉', '中考'), ('child', 'n. 孩子', 'n. 孩子', '中考')").run();
+  const { importLookup, importLookupIfChanged } = require("../import_lookup");
+  assert.deepEqual(importLookup(file), { words: 3, forms: 3 });
+  assert.equal(importLookupIfChanged(file), null); // unchanged file is not reloaded
+  const { body } = await api("POST", "/api/lens/lookup", { sentence: "We felt the children made headway, quickly." });
+  const by = new Map(body.map((w) => [w.token, w]));
+  assert.deepEqual([by.get("felt").word, by.get("felt").form, by.get("felt").also.word], ["feel", "过去式/过去分词", "felt"]);
+  assert.equal(by.get("children").word, "child");
+  assert.equal(by.get("children").also, null); // "pl. 孩子" only repeats child
+  assert.deepEqual([by.get("made").word, by.get("made").form], ["make", "过去式/过去分词"]);
+  // headway is in the study dictionary of this test, so it stays a study word
+  assert.equal(by.get("headway").inDictionary, true);
+  db.prepare("DELETE FROM dictionary WHERE word = 'headway'").run();
+  const again = await api("POST", "/api/lens/lookup", { sentence: "Some headway." });
+  assert.deepEqual([again.body[0].word, again.body[0].inDictionary, again.body[0].phonetic], ["headway", false, "ˈhedweɪ"]);
+  // the notebook shows the phonetic of a lookup-only word
+  await api("POST", "/api/notebook", { word: "glimpse", translation: "一瞥" });
+  const nb = await api("GET", "/api/notebook?limit=100");
+  assert.equal(nb.body.items.find((x) => x.word === "headway").phonetic, "ˈhedweɪ");
+});
